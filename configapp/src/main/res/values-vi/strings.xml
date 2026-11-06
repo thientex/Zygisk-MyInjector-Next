@@ -110,7 +110,7 @@
     <string name="language">"Ngôn ngữ"</string>
     <string name="language_system">"Theo hệ thống"</string>
     <string name="root_required">"Cần cấp quyền root"</string>
-    <string name="root_message">"Nhấn Đóng ứng dụng để kết thúc hoàn toàn tiến trình, cấp quyền root trong trình quản lý root, rồi mở lại MyInjector. Cấu hình đã lưu vẫn được giữ nguyên."</string>
+    <string name="root_message">"Đóng ứng dụng, cấp quyền root trong trình quản lý root, rồi mở lại MyInjector."</string>
     <string name="close">"Đóng ứng dụng"</string>
     <string name="root_check">"Đang yêu cầu quyền root…"</string>
     <string name="language_english">English</string>
@@ -142,9 +142,9 @@
 <string name="clean_config">"Dọn dẹp tệp cấu hình"</string>
 <string name="clean_confirm">"Xóa cấu hình của các ứng dụng không còn trên máy? Các tệp SO trong thư viện vẫn được giữ."</string>
 <string name="clean_done">"Đã xóa %1$d cấu hình ứng dụng không còn tồn tại."</string>
-<string name="factory_reset">"Khôi phục cài đặt gốc"</string>
+<string name="factory_reset">"Xóa toàn bộ dữ liệu"</string>
 <string name="reset_confirm">"Xóa toàn bộ cấu hình inject, tệp SO đã nhập và tùy chọn của app? Các ứng dụng đã cấu hình sẽ được đóng để ngừng dùng SO. Không thể hoàn tác."</string>
-<string name="reset_done">"Đã khôi phục dữ liệu ứng dụng."</string>
+<string name="reset_done">"Đã xóa toàn bộ dữ liệu."</string>
 <string name="maintenance_failed">"Thao tác chưa hoàn tất. Hãy kiểm tra quyền root và thử lại; một phần thay đổi có thể đã được áp dụng."</string>
 <string name="refresh_failed">Không làm mới được danh sách ứng dụng. Hãy thử lại.</string>
 </resources>

@@ -24,7 +24,8 @@ public class AppExitTest {
     @Test public void deniedRootDialogHasOnlyCloseAndClickKillsProcess() {
         try (ActivityController<Host> controller = Robolectric.buildActivity(Host.class).setup()) {
             ShadowProcess.setPid(24682);
-            androidx.appcompat.app.AlertDialog dialog = RootDeniedDialog.show(controller.get(), "su denied");
+            androidx.appcompat.app.AlertDialog dialog = RootDeniedDialog.show(controller.get());
+            assertEquals(controller.get().getString(R.string.root_message), ((android.widget.TextView) dialog.findViewById(android.R.id.message)).getText().toString());
             assertEquals(android.view.View.VISIBLE, dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).getVisibility());
             assertNotEquals(android.view.View.VISIBLE, dialog.getButton(android.content.DialogInterface.BUTTON_NEUTRAL).getVisibility());
             assertNotEquals(android.view.View.VISIBLE, dialog.getButton(android.content.DialogInterface.BUTTON_NEGATIVE).getVisibility());

@@ -4,6 +4,6 @@ ext {
     moduleName = "myinjector"
     moduleAuthor = "jiqiu2021"
     moduleDescription = "MyInjector private build with localized configuration app"
-    moduleVersion = "v1.5.0-private"
-    moduleVersionCode = 150
+    moduleVersion = "v1.5.1-private"
+    moduleVersionCode = 151
 }

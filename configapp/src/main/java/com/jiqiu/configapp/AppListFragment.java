@@ -24,7 +24,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.textfield.TextInputEditText;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 
 import java.util.ArrayList;
@@ -329,40 +328,39 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
             soListRecyclerView.setAdapter(soAdapter);
         }
 
-        // Create dialog
-        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(getContext())
-                .setTitle(Localized.text(R.string.text_app_configuration))
-                .setView(dialogView)
-                .setMessage(R.string.apply_notice)
-                .setPositiveButton(R.string.apply_and_save, (dialog, which) -> {
-                    // Save injection method
-                    String selectedMethod;
-                    if (radioCustomLinkerInjection.isChecked()) {
-                        selectedMethod = "custom_linker";
-                    } else if (radioRiruInjection.isChecked()) {
-                        selectedMethod = "riru";
-                    } else {
-                        selectedMethod = "standard";
-                    }
-                    List<ConfigManager.SoFile> selected = soListRecyclerView.getAdapter() == null
-                        ? new ArrayList<>() : ((SoSelectionAdapter) soListRecyclerView.getAdapter()).getSelectedSoFiles();
-                    boolean global = radioUseGlobalGadget.isChecked();
-                    ConfigManager.GadgetConfig gadget = radioUseCustomGadget.isChecked() ? stagedGadget[0] : null;
-                    android.content.Context appContext = requireContext().getApplicationContext();
-                    LOADER.execute(() -> {
-                        ConfigManager.ApplyResult result = configManager.applyAppConfiguration(
-                            appInfo.getPackageName(), selectedMethod, selected, global, gadget);
-                        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
-                            int message = result == ConfigManager.ApplyResult.RESTARTED ? R.string.apply_done
-                                : result == ConfigManager.ApplyResult.FAILED ? R.string.apply_failed
-                                : result == ConfigManager.ApplyResult.STOP_FAILED ? R.string.apply_stop_failed : R.string.apply_saved;
-                            android.widget.Toast.makeText(appContext, Localized.text(message), android.widget.Toast.LENGTH_LONG).show();
-                        });
-                    });
-                })
-                .setNegativeButton(Localized.text(R.string.text_cancel), null);
-
-        builder.show();
+        AppConfigurationDialog.show(requireActivity(), dialogView, completion -> {
+            // Save injection method
+            String selectedMethod;
+            if (radioCustomLinkerInjection.isChecked()) {
+                selectedMethod = "custom_linker";
+            } else if (radioRiruInjection.isChecked()) {
+                selectedMethod = "riru";
+            } else {
+                selectedMethod = "standard";
+            }
+            List<ConfigManager.SoFile> selected = soListRecyclerView.getAdapter() == null
+                ? new ArrayList<>() : ((SoSelectionAdapter) soListRecyclerView.getAdapter()).getSelectedSoFiles();
+            boolean global = radioUseGlobalGadget.isChecked();
+            ConfigManager.GadgetConfig gadget = radioUseCustomGadget.isChecked() ? stagedGadget[0] : null;
+            android.content.Context appContext = requireContext().getApplicationContext();
+            LOADER.execute(() -> {
+                ConfigManager.ApplyResult outcome;
+                try {
+                    outcome = configManager.applyAppConfiguration(appInfo.getPackageName(), selectedMethod, selected, global, gadget);
+                } catch (RuntimeException error) {
+                    android.util.Log.e("AppListFragment", "Unable to save app configuration", error);
+                    outcome = ConfigManager.ApplyResult.FAILED;
+                }
+                final ConfigManager.ApplyResult result = outcome;
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                    int message = result == ConfigManager.ApplyResult.RESTARTED ? R.string.apply_done
+                        : result == ConfigManager.ApplyResult.FAILED ? R.string.apply_failed
+                        : result == ConfigManager.ApplyResult.STOP_FAILED ? R.string.apply_stop_failed : R.string.apply_saved;
+                    android.widget.Toast.makeText(appContext, Localized.text(message), android.widget.Toast.LENGTH_LONG).show();
+                    completion.finish(result != ConfigManager.ApplyResult.FAILED);
+                });
+            });
+        });
     }
 
     // Inner class for SO selection adapter

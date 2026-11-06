@@ -1,6 +1,14 @@
-# Private upgrade 1.5.0
+# Private upgrade 1.5.1
 
-This working tree is based on jiqiu2022/Zygisk-MyInjector. The original MIT license and attribution are retained. Nothing has been pushed to GitHub.
+This working tree is based on jiqiu2022/Zygisk-MyInjector. The original MIT license and attribution are retained. The maintained source is published at https://github.com/thientex/Zygisk-MyInjector-Next.
+
+## Save dialog and wording fixes in 1.5.1
+
+- The app configuration dialog has a bounded scrolling body and a separate, pinned Cancel / Apply and save action row. The notice is inside the scroll area instead of a separate alert message; a long SO list or large text cannot push the save action below the dialog. Saving still uses the existing deployment/config publication and target restart sequence. A failed apply leaves the dialog open for retry.
+- The denied-root dialog only instructs users to close the app, grant root in their root manager, and reopen. Technical diagnostics are omitted. Its sole Close app button still removes the task and terminates this app's own process without root.
+- The settings action is named Delete all data (Xóa toàn bộ dữ liệu in Vietnamese). Its scope and confirmation remain unchanged.
+- Robolectric covers a long dialog at normal and 1.5x text sizes, action visibility, a save callback writing selected SO data to a local JSON fixture, cancellation, and retry after failure. These checks do not execute root config publication or injection on a physical device.
+- Updating the APK is sufficient; native module code is unchanged.
 
 ## App refresh and data management in 1.5.0
 

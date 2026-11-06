@@ -61,7 +61,7 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
             pendingRootUi = () -> {
                 checking.setVisibility(android.view.View.GONE);
                 if (!granted) {
-                    rootDialog = RootDeniedDialog.show(this, RootShell.failure());
+                    rootDialog = RootDeniedDialog.show(this);
                     return;
                 }
                 rootGranted = true;

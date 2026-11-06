@@ -110,7 +110,7 @@
     <string name="language">"Language"</string>
     <string name="language_system">"System default"</string>
     <string name="root_required">"Root permission required"</string>
-    <string name="root_message">"Press Close app to end this process completely, grant root access in your root manager, then reopen MyInjector. Your saved settings will be kept."</string>
+    <string name="root_message">"Close the app, grant root access in your root manager, then open MyInjector again."</string>
     <string name="close">"Close app"</string>
     <string name="root_check">"Requesting root access…"</string>
     <string name="language_english">English</string>
@@ -142,9 +142,9 @@
 <string name="clean_config">"Clean configuration files"</string>
 <string name="clean_confirm">"Remove configuration entries for apps no longer installed? SO files in the library will be kept."</string>
 <string name="clean_done">"Removed %1$d obsolete app configurations."</string>
-<string name="factory_reset">"Factory reset"</string>
+<string name="factory_reset">"Delete all data"</string>
 <string name="reset_confirm">"Delete all injection settings, imported SO files and local preferences? Configured apps will be closed to unload their SO files. This cannot be undone."</string>
-<string name="reset_done">"App data reset."</string>
+<string name="reset_done">"All data deleted."</string>
 <string name="maintenance_failed">"Operation did not complete. Check root access and try again; some changes may already be applied."</string>
 <string name="refresh_failed">Unable to refresh the app list. Please try again.</string>
 </resources>
