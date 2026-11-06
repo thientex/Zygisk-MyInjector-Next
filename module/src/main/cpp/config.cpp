@@ -1,6 +1,8 @@
 #include "config.h"
 #include <fstream>
 #include <sstream>
+#include <cstdlib>
+#include <cerrno>
 #include <android/log.h>
 
 #define LOG_TAG "MyInjector"
@@ -9,6 +11,14 @@
 
 namespace Config {
     
+    static int boundedNumber(const std::string &text, int fallback, int low, int high) {
+        if (text.empty()) return fallback;
+        errno = 0;
+        char *end = nullptr;
+        long value = strtol(text.c_str(), &end, 10);
+        if (errno || end == text.c_str() || *end || value < low || value > high) return fallback;
+        return static_cast<int>(value);
+    }
     static ModuleConfig g_config;
     static bool g_configLoaded = false;
     
@@ -107,7 +117,7 @@ namespace Config {
                 if (!address.empty()) gadgetConfig->address = address;
                 
                 std::string portStr = extractValue(gadgetObj, "port");
-                if (!portStr.empty()) gadgetConfig->port = std::stoi(portStr);
+                if (!portStr.empty()) gadgetConfig->port = boundedNumber(portStr, 27042, 1, 65535);
                 
                 std::string onPortConflict = extractValue(gadgetObj, "onPortConflict");
                 if (!onPortConflict.empty()) gadgetConfig->onPortConflict = onPortConflict;
@@ -160,7 +170,7 @@ namespace Config {
         
         std::string delayStr = extractValue(json, "injectionDelay");
         if (!delayStr.empty()) {
-            g_config.injectionDelay = std::stoi(delayStr);
+            g_config.injectionDelay = boundedNumber(delayStr, 2, 0, 60);
         }
         
         LOGD("Module enabled: %d, hide injection: %d, injection delay: %d", 

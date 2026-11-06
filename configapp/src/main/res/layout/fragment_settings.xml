@@ -20,6 +20,10 @@
             android:textStyle="bold"
             android:layout_marginBottom="16dp" />
 
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/language" android:textAppearance="?attr/textAppearanceTitleMedium" />
+        <Spinner android:id="@+id/language_picker" android:layout_width="match_parent"
+            android:layout_height="56dp" android:layout_marginBottom="16dp" />
         <!-- 过滤系统应用设置 -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -45,7 +49,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/filter_system_apps_desc"
                     android:textSize="14sp"
-                    android:textColor="@android:color/darker_gray"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:layout_marginBottom="12dp" />
 
                 <RadioGroup
@@ -87,7 +91,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="注入延迟时间"
+                    android:text="@string/text_injection_delay"
                     android:textSize="16sp"
                     android:textStyle="bold"
                     android:layout_marginBottom="8dp" />
@@ -95,9 +99,9 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="设置SO文件注入前的等待时间，以确保应用完全初始化"
+                    android:text="@string/text_wait_before_loading_so_files_to_allow_the_app_to_initialize"
                     android:textSize="14sp"
-                    android:textColor="@android:color/darker_gray"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:layout_marginBottom="12dp" />
 
                 <LinearLayout
@@ -109,7 +113,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="延迟时间（秒）："
+                        android:text="@string/text_delay_seconds"
                         android:textSize="14sp"
                         android:layout_marginEnd="8dp" />
 
@@ -126,7 +130,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="秒"
+                        android:text="@string/text_seconds"
                         android:textSize="14sp" />
 
                 </LinearLayout>
@@ -134,9 +138,9 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="建议值：2-5秒。某些应用可能需要更长时间。"
+                    android:text="@string/text_suggested_2_5_seconds_some_apps_need_longer"
                     android:textSize="12sp"
-                    android:textColor="@android:color/darker_gray"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:layout_marginTop="8dp" />
 
             </LinearLayout>
@@ -158,7 +162,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="全局Gadget配置"
+                    android:text="@string/text_global_gadget_configuration"
                     android:textSize="16sp"
                     android:textStyle="bold"
                     android:layout_marginBottom="8dp" />
@@ -166,16 +170,16 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="配置全局默认的Gadget设置，应用可以选择使用或覆盖"
+                    android:text="@string/text_default_gadget_settings_individual_apps_can_override_them"
                     android:textSize="14sp"
-                    android:textColor="@android:color/darker_gray"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:layout_marginBottom="12dp" />
 
                 <TextView
                     android:id="@+id/tvGlobalGadgetStatus"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="未配置"
+                    android:text="@string/text_not_configured"
                     android:textSize="14sp"
                     android:layout_marginBottom="8dp" />
 
@@ -183,7 +187,7 @@
                     android:id="@+id/btnConfigureGlobalGadget"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="配置全局Gadget"
+                    android:text="@string/text_configure_global_gadget"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
             </LinearLayout>
@@ -215,7 +219,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/app_description"
                     android:textSize="14sp"
-                    android:textColor="@android:color/darker_gray" />
+                    android:textColor="?attr/colorOnSurfaceVariant" />
 
             </LinearLayout>
 

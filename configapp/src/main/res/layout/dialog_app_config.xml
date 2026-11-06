@@ -36,7 +36,7 @@
                 android:layout_height="wrap_content"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:text="应用名称" />
+                android:text="@string/text_app_name" />
 
             <TextView
                 android:id="@+id/packageName"
@@ -59,7 +59,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="选择要注入的SO文件"
+        android:text="@string/text_select_so_files_to_load"
         android:textSize="14sp"
         android:textColor="?android:attr/textColorSecondary"
         android:layout_marginBottom="8dp" />
@@ -76,7 +76,7 @@
         android:layout_width="match_parent"
         android:layout_height="100dp"
         android:gravity="center"
-        android:text="暂无可用的SO文件\n请先在SO库管理中添加"
+        android:text="@string/text_no_so_files_available_nadd_a_file_in_the_so_library_first"
         android:textSize="14sp"
         android:textColor="?android:attr/textColorTertiary"
         android:visibility="gone" />
@@ -91,7 +91,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Gadget 配置"
+        android:text="@string/text_gadget_configuration"
         android:textSize="14sp"
         android:textColor="?android:attr/textColorSecondary"
         android:layout_marginBottom="8dp" />
@@ -107,14 +107,14 @@
             android:id="@+id/radioNoGadget"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="不使用Gadget"
+            android:text="@string/text_do_not_use_gadget"
             android:checked="true" />
 
         <RadioButton
             android:id="@+id/radioUseGlobalGadget"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="使用全局Gadget配置" />
+            android:text="@string/text_use_global_gadget_settings" />
 
         <TextView
             android:id="@+id/tvGlobalGadgetInfo"
@@ -122,7 +122,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="32dp"
             android:layout_marginBottom="4dp"
-            android:text="未配置全局Gadget"
+            android:text="@string/text_global_gadget_is_not_configured"
             android:textColor="?android:attr/textColorSecondary"
             android:textSize="12sp" />
 
@@ -130,7 +130,7 @@
             android:id="@+id/radioUseCustomGadget"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="自定义Gadget配置" />
+            android:text="@string/text_custom_gadget_settings" />
 
     </RadioGroup>
 
@@ -138,7 +138,7 @@
         android:id="@+id/btnConfigureGadget"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="配置Gadget"
+        android:text="@string/text_configure_gadget"
         android:textSize="14sp"
         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
         android:enabled="false"
@@ -148,7 +148,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Gadget可用于Frida调试，可配置监听地址和端口"
+        android:text="@string/text_gadget_supports_frida_debugging_with_a_configurable_address_and_p"
         android:textSize="12sp"
         android:textColor="?android:attr/textColorSecondary"
         android:layout_marginBottom="16dp" />
@@ -156,7 +156,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="注入方式"
+        android:text="@string/text_loading_method"
         android:textSize="14sp"
         android:textColor="?android:attr/textColorSecondary"
         android:layout_marginBottom="8dp" />
@@ -171,7 +171,7 @@
             android:id="@+id/radioStandardInjection"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="标准注入"
+            android:text="@string/text_standard"
             android:checked="true" />
 
         <TextView
@@ -179,7 +179,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="32dp"
             android:layout_marginBottom="8dp"
-            android:text="使用标准dlopen方式注入"
+            android:text="@string/text_load_using_standard_dlopen"
             android:textColor="?android:attr/textColorSecondary"
             android:textSize="12sp" />
 
@@ -187,12 +187,12 @@
             android:id="@+id/radioRiruInjection"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Riru注入" />
+            android:text="@string/text_riru" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="使用Riru Hide隐藏注入的SO文件"
+            android:text="@string/text_load_with_riru_hide"
             android:textSize="12sp"
             android:textColor="?android:attr/textColorSecondary"
             android:layout_marginStart="32dp"
@@ -202,12 +202,12 @@
             android:id="@+id/radioCustomLinkerInjection"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="自定义Linker注入" />
+            android:text="@string/text_custom_linker" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="使用自定义ELF加载器进行注入"
+            android:text="@string/text_load_using_the_custom_elf_loader"
             android:textSize="12sp"
             android:textColor="?android:attr/textColorSecondary"
             android:layout_marginStart="32dp" />

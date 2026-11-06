@@ -1,7 +1,12 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
+<resources>
     <style name="Base.Theme.ZygiskMyInjector" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your dark theme here. -->
-        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
+        <item name="colorPrimary">#B5C4FF</item>
+        <item name="colorSecondary">#B5C4FF</item>
+        <item name="colorSurface">#1E2433</item>
+        <item name="colorOnSurface">#E1E6F6</item>
+        <item name="android:colorBackground">#111521</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="materialCardViewStyle">@style/InjectorCard</item>
     </style>
+    <style name="Theme.ZygiskMyInjector" parent="Base.Theme.ZygiskMyInjector" />
 </resources>

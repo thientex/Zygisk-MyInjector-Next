@@ -19,6 +19,8 @@ import java.util.List;
  */
 public class AppListAdapter extends RecyclerView.Adapter<AppListAdapter.AppViewHolder> {
     
+    private static final java.util.concurrent.ExecutorService ICONS = java.util.concurrent.Executors.newFixedThreadPool(2);
+    private final android.util.LruCache<String, android.graphics.drawable.Drawable> icons = new android.util.LruCache<>(96);
     private List<AppInfo> appList;
     private List<AppInfo> filteredAppList;
     private OnAppToggleListener onAppToggleListener;
@@ -40,6 +42,7 @@ public class AppListAdapter extends RecyclerView.Adapter<AppListAdapter.AppViewH
     public void setAppList(List<AppInfo> appList) {
         this.appList = appList;
         this.filteredAppList = new ArrayList<>(appList);
+        sortVisible();
         notifyDataSetChanged();
     }
     
@@ -62,15 +65,20 @@ public class AppListAdapter extends RecyclerView.Adapter<AppListAdapter.AppViewH
             
             // 搜索过滤
             if (query == null || query.isEmpty() || 
-                app.getAppName().toLowerCase().contains(query.toLowerCase()) ||
-                app.getPackageName().toLowerCase().contains(query.toLowerCase())) {
+                app.getAppName().toLowerCase(java.util.Locale.ROOT).contains(query.toLowerCase(java.util.Locale.ROOT)) ||
+                app.getPackageName().toLowerCase(java.util.Locale.ROOT).contains(query.toLowerCase(java.util.Locale.ROOT))) {
                 filteredAppList.add(app);
             }
         }
         
+        sortVisible();
         notifyDataSetChanged();
     }
     
+    private void sortVisible() {
+        filteredAppList.sort(new AppOrder(java.util.Locale.getDefault()));
+    }
+
     @NonNull
     @Override
     public AppViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -107,7 +115,22 @@ public class AppListAdapter extends RecyclerView.Adapter<AppListAdapter.AppViewH
         }
         
         public void bind(AppInfo appInfo) {
-            appIcon.setImageDrawable(appInfo.getAppIcon());
+            String key = appInfo.getPackageName();
+            appIcon.setTag(key);
+            android.graphics.drawable.Drawable cached = icons.get(key);
+            appIcon.setImageDrawable(cached != null ? cached : itemView.getContext().getPackageManager().getDefaultActivityIcon());
+            if (cached == null) {
+                android.content.Context context = itemView.getContext().getApplicationContext();
+                ICONS.execute(() -> {
+                    try {
+                        android.graphics.drawable.Drawable icon = context.getPackageManager().getApplicationIcon(key);
+                        appIcon.post(() -> {
+                            icons.put(key, icon);
+                            if (key.equals(appIcon.getTag())) appIcon.setImageDrawable(icon);
+                        });
+                    } catch (android.content.pm.PackageManager.NameNotFoundException ignored) {}
+                });
+            }
             appName.setText(appInfo.getAppName());
             packageName.setText(appInfo.getPackageName());
             
@@ -127,6 +150,8 @@ public class AppListAdapter extends RecyclerView.Adapter<AppListAdapter.AppViewH
                 appInfo.setEnabled(isChecked);
                 if (onAppToggleListener != null) {
                     onAppToggleListener.onAppToggle(appInfo, isChecked);
+                    sortVisible();
+                    notifyDataSetChanged();
                 }
             });
             

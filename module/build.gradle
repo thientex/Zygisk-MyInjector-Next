@@ -10,6 +10,9 @@ android {
     compileSdkVersion rootProject.ext.targetSdkVersion
     ndkVersion '25.2.9519653'
     defaultConfig {
+        if (project.hasProperty('targetAbis')) {
+            ndk { abiFilters(*project.property('targetAbis').split(',')) }
+        }
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         externalNativeBuild {
@@ -42,7 +45,7 @@ afterEvaluate {
         def magiskDir = file("$outDir/magisk_module_$variantLowered")
 
         task("prepareMagiskFiles${variantCapped}", type: Sync) {
-            dependsOn("assemble$variantCapped")
+            dependsOn("assemble$variantCapped", ':configapp:assembleDebug')
 
             def templatePath = "$rootDir/template/magisk_module"
 
@@ -72,10 +75,8 @@ afterEvaluate {
             }
             // Copy ConfigApp APK if it exists
             def apkFile = file("$rootDir/configapp/build/outputs/apk/debug/configapp-debug.apk")
-            if (apkFile.exists()) {
-                from(apkFile) {
-                    rename { 'configapp.apk' }
-                }
+            from(apkFile) {
+                rename { 'configapp.apk' }
             }
             doLast {
                 file("$magiskDir/zygisk").mkdir()

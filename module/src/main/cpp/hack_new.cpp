@@ -4,6 +4,7 @@
 #include "mylinker.h"
 #include <cstring>
 #include <thread>
+#include <chrono>
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -17,7 +18,15 @@ extern "C" void riru_hide(const char *name);
 void load_so_file_standard(const char *game_data_dir, const Config::SoFile &soFile) {
     // Use original filename
     char so_path[512];
-    snprintf(so_path, sizeof(so_path), "%s/files/%s", game_data_dir, soFile.name.c_str());
+    if (soFile.name.empty() || soFile.name.find('/') != std::string::npos) {
+        LOGE("Invalid SO filename");
+        return;
+    }
+    int pathLength = snprintf(so_path, sizeof(so_path), "%s/files/%s", game_data_dir, soFile.name.c_str());
+    if (pathLength < 0 || static_cast<size_t>(pathLength) >= sizeof(so_path)) {
+        LOGE("SO path is too long");
+        return;
+    }
     
     // Check if file exists
     if (access(so_path, F_OK) != 0) {
@@ -37,7 +46,15 @@ void load_so_file_standard(const char *game_data_dir, const Config::SoFile &soFi
 void load_so_file_riru(const char *game_data_dir, const Config::SoFile &soFile) {
     // Use original filename
     char so_path[512];
-    snprintf(so_path, sizeof(so_path), "%s/files/%s", game_data_dir, soFile.name.c_str());
+    if (soFile.name.empty() || soFile.name.find('/') != std::string::npos) {
+        LOGE("Invalid SO filename");
+        return;
+    }
+    int pathLength = snprintf(so_path, sizeof(so_path), "%s/files/%s", game_data_dir, soFile.name.c_str());
+    if (pathLength < 0 || static_cast<size_t>(pathLength) >= sizeof(so_path)) {
+        LOGE("SO path is too long");
+        return;
+    }
     
     // Check if file exists
     if (access(so_path, F_OK) != 0) {
@@ -64,7 +81,15 @@ void load_so_file_riru(const char *game_data_dir, const Config::SoFile &soFile) 
 void load_so_file_custom_linker(const char *game_data_dir, const Config::SoFile &soFile, JavaVM *vm) {
     // Use original filename
     char so_path[512];
-    snprintf(so_path, sizeof(so_path), "%s/files/%s", game_data_dir, soFile.name.c_str());
+    if (soFile.name.empty() || soFile.name.find('/') != std::string::npos) {
+        LOGE("Invalid SO filename");
+        return;
+    }
+    int pathLength = snprintf(so_path, sizeof(so_path), "%s/files/%s", game_data_dir, soFile.name.c_str());
+    if (pathLength < 0 || static_cast<size_t>(pathLength) >= sizeof(so_path)) {
+        LOGE("SO path is too long");
+        return;
+    }
     
     // Check if file exists
     if (access(so_path, F_OK) != 0) {
@@ -88,8 +113,18 @@ void load_so_file_custom_linker(const char *game_data_dir, const Config::SoFile 
 void hack_thread_func(const char *game_data_dir, const char *package_name, JavaVM *vm) {
     LOGI("Hack thread started for package: %s", package_name);
     
-    // Note: Delay is now handled in main thread before this thread is created
-    LOGI("Starting injection immediately (delay already applied in main thread)");
+    const int delay = Config::getInjectionDelay();
+    if (delay > 0) std::this_thread::sleep_for(std::chrono::seconds(delay));
+    // Attach only this worker; never share a JNIEnv between threads.
+    JNIEnv *workerEnv = nullptr;
+    bool attached = false;
+    if (vm && vm->GetEnv(reinterpret_cast<void **>(&workerEnv), JNI_VERSION_1_6) == JNI_EDETACHED) {
+        if (vm->AttachCurrentThread(&workerEnv, nullptr) != JNI_OK) {
+            LOGE("Unable to attach loading worker to JavaVM");
+            return;
+        }
+        attached = true;
+    }
     
     // Get injection method for this app
     Config::InjectionMethod method = Config::getAppInjectionMethod(package_name);
@@ -120,6 +155,7 @@ void hack_thread_func(const char *game_data_dir, const char *package_name, JavaV
         }
     }
     
+    if (attached) vm->DetachCurrentThread();
     // Cleanup custom linker resources when done (if used)
     if (method == Config::InjectionMethod::CUSTOM_LINKER) {
         // Keep libraries loaded, don't cleanup
@@ -130,6 +166,5 @@ void hack_thread_func(const char *game_data_dir, const char *package_name, JavaV
 void hack_prepare(const char *game_data_dir, const char *package_name, void *data, size_t length, JavaVM *vm) {
     LOGI("hack_prepare called for package: %s, dir: %s", package_name, game_data_dir);
     
-    std::thread hack_thread(hack_thread_func, game_data_dir, package_name, vm);
-    hack_thread.join();
+    hack_thread_func(game_data_dir, package_name, vm);
 }

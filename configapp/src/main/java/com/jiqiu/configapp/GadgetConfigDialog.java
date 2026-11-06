@@ -127,7 +127,7 @@ public class GadgetConfigDialog extends DialogFragment {
                             config.scriptPath = path;
                             updateJsonPreview();
                         } else {
-                            Toast.makeText(getContext(), "无法获取文件路径", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getContext(), Localized.text(R.string.text_unable_to_resolve_the_file_path), Toast.LENGTH_SHORT).show();
                         }
                     }
                 }
@@ -145,13 +145,13 @@ public class GadgetConfigDialog extends DialogFragment {
         setupListeners();
         updateJsonPreview();
         
-        String title = customTitle != null ? customTitle : "Gadget 配置";
+        String title = customTitle != null ? customTitle : Localized.text(R.string.text_gadget_configuration);
         
         return new MaterialAlertDialogBuilder(getContext())
                 .setTitle(title)
                 .setView(view)
-                .setPositiveButton("保存", (dialog, which) -> saveConfig())
-                .setNegativeButton("取消", null)
+                .setPositiveButton(Localized.text(R.string.text_save), (dialog, which) -> saveConfig())
+                .setNegativeButton(Localized.text(R.string.text_cancel), null)
                 .create();
     }
     
@@ -487,10 +487,10 @@ public class GadgetConfigDialog extends DialogFragment {
     }
     
     private void selectScriptFile() {
-        String[] options = {"浏览文件系统", "从外部文件管理器选择", "手动输入路径"};
+        String[] options = {Localized.text(R.string.text_browse_files), Localized.text(R.string.text_choose_with_a_file_manager), Localized.text(R.string.text_enter_a_path_manually)};
         
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("选择 Script 文件")
+                .setTitle(Localized.text(R.string.text_choose_a_script_file))
                 .setItems(options, (dialog, which) -> {
                     if (which == 0) {
                         openFileBrowser();
@@ -510,11 +510,11 @@ public class GadgetConfigDialog extends DialogFragment {
             "/sdcard",
             "/sdcard/Download",
             "/storage/emulated/0",
-            "自定义路径..."
+            Localized.text(R.string.text_custom_path)
         };
         
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("选择起始目录")
+                .setTitle(Localized.text(R.string.text_choose_a_starting_folder))
                 .setItems(paths, (dialog, which) -> {
                     if (which == paths.length - 1) {
                         // Custom path
@@ -533,12 +533,12 @@ public class GadgetConfigDialog extends DialogFragment {
         View view = getLayoutInflater().inflate(R.layout.dialog_input, null);
         android.widget.EditText editText = view.findViewById(android.R.id.edit);
         editText.setText("/");
-        editText.setHint("输入起始路径");
+        editText.setHint(Localized.text(R.string.text_enter_a_starting_path));
         
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("自定义起始路径")
+                .setTitle(Localized.text(R.string.text_custom_starting_path))
                 .setView(view)
-                .setPositiveButton("确定", (dialog, which) -> {
+                .setPositiveButton(Localized.text(R.string.text_ok), (dialog, which) -> {
                     String path = editText.getText().toString().trim();
                     if (!path.isEmpty()) {
                         Intent intent = new Intent(getContext(), FileBrowserActivity.class);
@@ -547,7 +547,7 @@ public class GadgetConfigDialog extends DialogFragment {
                         fileBrowserLauncher.launch(intent);
                     }
                 })
-                .setNegativeButton("取消", null)
+                .setNegativeButton(Localized.text(R.string.text_cancel), null)
                 .show();
     }
     
@@ -571,9 +571,9 @@ public class GadgetConfigDialog extends DialogFragment {
         editText.setHint("/data/local/tmp/script.js");
         
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("输入 Script 文件路径")
+                .setTitle(Localized.text(R.string.text_enter_the_script_file_path))
                 .setView(view)
-                .setPositiveButton("确定", (dialog, which) -> {
+                .setPositiveButton(Localized.text(R.string.text_ok), (dialog, which) -> {
                     String path = editText.getText().toString().trim();
                     if (!path.isEmpty()) {
                         editScriptPath.setText(path);
@@ -581,7 +581,7 @@ public class GadgetConfigDialog extends DialogFragment {
                         updateJsonPreview();
                     }
                 })
-                .setNegativeButton("取消", null)
+                .setNegativeButton(Localized.text(R.string.text_cancel), null)
                 .show();
     }
     
@@ -603,13 +603,13 @@ public class GadgetConfigDialog extends DialogFragment {
         setupListeners();
         updateJsonPreview();
         
-        String title = customTitle != null ? customTitle : "Gadget 配置";
+        String title = customTitle != null ? customTitle : Localized.text(R.string.text_gadget_configuration);
         
         new MaterialAlertDialogBuilder(getContext())
                 .setTitle(title)
                 .setView(view)
-                .setPositiveButton("保存", (dialog, which) -> saveConfig())
-                .setNegativeButton("取消", null)
+                .setPositiveButton(Localized.text(R.string.text_save), (dialog, which) -> saveConfig())
+                .setNegativeButton(Localized.text(R.string.text_cancel), null)
                 .show();
     }
     

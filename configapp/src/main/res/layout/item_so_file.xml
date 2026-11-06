@@ -3,8 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="4dp"
-    app:cardElevation="2dp">
+    android:layout_marginHorizontal="12dp" android:layout_marginVertical="5dp"
+    app:cardElevation="0dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -23,7 +23,7 @@
                 android:layout_height="40dp"
                 android:padding="8dp"
                 android:src="@android:drawable/ic_menu_save"
-                android:tint="?attr/colorPrimary" />
+                app:tint="?attr/colorPrimary" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -59,7 +59,7 @@
                 android:layout_height="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@android:drawable/ic_menu_delete"
-                android:tint="?attr/colorError" />
+                app:tint="?attr/colorError" />
 
         </LinearLayout>
 
@@ -74,7 +74,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="使用此SO的应用: "
+                android:text="@string/text_apps_using_this_so"
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary" />
 

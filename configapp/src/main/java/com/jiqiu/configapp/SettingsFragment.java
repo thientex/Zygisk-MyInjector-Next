@@ -56,6 +56,25 @@ public class SettingsFragment extends Fragment {
         initSharedPreferences();
         loadSettings();
         setupListeners();
+        android.widget.Spinner languages = view.findViewById(R.id.language_picker);
+        String[] tags = {"", "en", "vi", "zh"};
+        String[] labels = {getString(R.string.language_system), getString(R.string.language_english), getString(R.string.language_vietnamese), getString(R.string.language_chinese)};
+        android.widget.ArrayAdapter<String> languageAdapter = new android.widget.ArrayAdapter<>(
+            requireContext(), android.R.layout.simple_spinner_dropdown_item, labels);
+        languages.setAdapter(languageAdapter);
+        String selected = sharedPreferences.getString("language", "");
+        for (int i = 0; i < tags.length; i++) if (tags[i].equals(selected)) languages.setSelection(i);
+        languages.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+            public void onItemSelected(android.widget.AdapterView<?> parent, View v, int position, long id) {
+                if (!tags[position].equals(sharedPreferences.getString("language", ""))) {
+                    sharedPreferences.edit().putString("language", tags[position]).apply();
+                    AppCatalog.clear();
+                    androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
+                        androidx.core.os.LocaleListCompat.forLanguageTags(tags[position]));
+                }
+            }
+        });
     }
     
     private void initViews(View view) {
@@ -151,15 +170,15 @@ public class SettingsFragment extends Fragment {
     private void updateGlobalGadgetStatus() {
         ConfigManager.GadgetConfig globalGadget = configManager.getGlobalGadgetConfig();
         if (globalGadget != null) {
-            String status = "已配置: " + globalGadget.gadgetName;
+            String status = Localized.text(R.string.text_configured) + globalGadget.gadgetName;
             if (globalGadget.mode.equals("server")) {
-                status += " (Server模式, 端口: " + globalGadget.port + ")";
+                status += Localized.text(R.string.text_server_port) + globalGadget.port + ")";
             } else {
-                status += " (Script模式)";
+                status += Localized.text(R.string.text_script_mode_106);
             }
             tvGlobalGadgetStatus.setText(status);
         } else {
-            tvGlobalGadgetStatus.setText("未配置");
+            tvGlobalGadgetStatus.setText(Localized.text(R.string.text_not_configured));
         }
     }
     
@@ -167,7 +186,7 @@ public class SettingsFragment extends Fragment {
         // Use existing GadgetConfigDialog
         GadgetConfigDialog dialog = new GadgetConfigDialog(
             getContext(),
-            "全局Gadget配置",
+            Localized.text(R.string.text_global_gadget_configuration),
             configManager.getGlobalGadgetConfig(),
             gadgetConfig -> {
                 // Save global gadget configuration

@@ -17,7 +17,7 @@
                 android:id="@+id/toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
-                app:title="SO文件管理" />
+                app:title="@string/text_so_library" />
 
         </com.google.android.material.appbar.AppBarLayout>
 
@@ -44,7 +44,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="暂无SO文件"
+                    android:text="@string/text_no_so_files_yet"
                     android:textSize="18sp"
                     android:textColor="?android:attr/textColorSecondary" />
 
@@ -52,7 +52,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="点击右下角按钮添加SO文件"
+                    android:text="@string/text_tap_to_add_an_so_file"
                     android:textSize="14sp"
                     android:textColor="?android:attr/textColorTertiary" />
 

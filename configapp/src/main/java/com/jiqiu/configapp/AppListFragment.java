@@ -37,6 +37,7 @@ import java.util.List;
  */
 public class AppListFragment extends Fragment implements AppListAdapter.OnAppToggleListener, AppListAdapter.OnAppClickListener {
     
+    private static final java.util.concurrent.ExecutorService LOADER = java.util.concurrent.Executors.newSingleThreadExecutor();
     private RecyclerView recyclerView;
     private AppListAdapter adapter;
     private TextInputEditText searchEditText;
@@ -57,16 +58,24 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         
-        configManager = new ConfigManager(requireContext());
-        // Ensure module directories exist
-        configManager.ensureModuleDirectories();
-        
         initViews(view);
         setupRecyclerView();
         setupSearchView();
         loadApps();
     }
     
+    @Override
+    public void onHiddenChanged(boolean hidden) {
+        super.onHiddenChanged(hidden);
+        if (!hidden && getView() != null) {
+            if (AppCatalog.memory == null) loadApps();
+            else if (allApps != null && configManager != null) {
+                for (AppInfo app : allApps) app.setEnabled(configManager.isAppEnabled(app.getPackageName()));
+                filterApps(searchEditText.getText().toString());
+            }
+        }
+    }
+
     private void initViews(View view) {
         recyclerView = view.findViewById(R.id.recycler_view_apps);
         searchEditText = view.findViewById(R.id.search_edit_text);
@@ -100,7 +109,27 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
         progressBar.setVisibility(View.VISIBLE);
         recyclerView.setVisibility(View.GONE);
         
-        new LoadAppsTask().execute();
+        hideSystemApps = requireContext().getSharedPreferences("MyInjectorSettings", 0)
+            .getBoolean("hide_system_apps", false);
+        final android.content.Context context = requireContext().getApplicationContext();
+        final View currentView = getView();
+        LOADER.execute(() -> {
+            ConfigManager manager = new ConfigManager(context);
+            manager.ensureModuleDirectories();
+            List<AppInfo> apps = AppCatalog.memory;
+            if (apps == null) apps = AppCatalog.load(context);
+            for (AppInfo app : apps) app.setEnabled(manager.isAppEnabled(app.getPackageName()));
+            final List<AppInfo> result = apps;
+            new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                if (getView() != currentView || !isAdded()) return;
+                configManager = manager;
+                allApps = result;
+                adapter.setAppList(result);
+                progressBar.setVisibility(View.GONE);
+                recyclerView.setVisibility(View.VISIBLE);
+                filterApps(searchEditText.getText().toString());
+            });
+        });
     }
     
     private void filterApps(String query) {
@@ -111,7 +140,7 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
     
     public void setHideSystemApps(boolean hideSystemApps) {
         this.hideSystemApps = hideSystemApps;
-        filterApps(searchEditText.getText().toString());
+        if (searchEditText != null) filterApps(searchEditText.getText().toString());
     }
     
     @Override
@@ -147,7 +176,11 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
         TextView tvGlobalGadgetInfo = dialogView.findViewById(R.id.tvGlobalGadgetInfo);
         com.google.android.material.button.MaterialButton btnConfigureGadget = dialogView.findViewById(R.id.btnConfigureGadget);
         
-        appIcon.setImageDrawable(appInfo.getAppIcon());
+        try {
+            appIcon.setImageDrawable(requireContext().getPackageManager().getApplicationIcon(appInfo.getPackageName()));
+        } catch (PackageManager.NameNotFoundException ignored) {
+            appIcon.setImageDrawable(requireContext().getPackageManager().getDefaultActivityIcon());
+        }
         appName.setText(appInfo.getAppName());
         packageName.setText(appInfo.getPackageName());
         
@@ -168,13 +201,13 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
         
         // Update global gadget info
         if (globalGadget != null) {
-            String info = "全局: " + globalGadget.gadgetName;
+            String info = Localized.text(R.string.text_global) + globalGadget.gadgetName;
             if (globalGadget.mode.equals("server")) {
-                info += " (端口: " + globalGadget.port + ")";
+                info += Localized.text(R.string.text_port) + globalGadget.port + ")";
             }
             tvGlobalGadgetInfo.setText(info);
         } else {
-            tvGlobalGadgetInfo.setText("未配置全局Gadget");
+            tvGlobalGadgetInfo.setText(Localized.text(R.string.text_global_gadget_is_not_configured));
         }
         
         // Set initial radio selection
@@ -219,7 +252,7 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
             
             GadgetConfigDialog dialog = new GadgetConfigDialog(
                 getContext(),
-                "配置" + appInfo.getAppName() + "的Gadget",
+                Localized.text(R.string.text_configure) + appInfo.getAppName() + Localized.text(R.string.text_gadget),
                 currentConfig,
                 config -> {
                     configManager.setAppUseGlobalGadget(appInfo.getPackageName(), false);
@@ -247,9 +280,9 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
         
         // Create dialog
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(getContext())
-                .setTitle("配置注入")
+                .setTitle(Localized.text(R.string.text_app_configuration))
                 .setView(dialogView)
-                .setPositiveButton("保存", (dialog, which) -> {
+                .setPositiveButton(Localized.text(R.string.text_save), (dialog, which) -> {
                     // Save injection method
                     String selectedMethod;
                     if (radioCustomLinkerInjection.isChecked()) {
@@ -277,7 +310,7 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
                         }
                     }
                 })
-                .setNegativeButton("取消", null);
+                .setNegativeButton(Localized.text(R.string.text_cancel), null);
         
         builder.show();
     }
@@ -356,62 +389,4 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
         }
     }
     
-    /**
-     * 异步加载应用列表
-     */
-    private class LoadAppsTask extends AsyncTask<Void, Void, List<AppInfo>> {
-        
-        @Override
-        protected List<AppInfo> doInBackground(Void... voids) {
-            List<AppInfo> apps = new ArrayList<>();
-            PackageManager pm = getContext().getPackageManager();
-            
-            List<ApplicationInfo> installedApps = pm.getInstalledApplications(PackageManager.GET_META_DATA);
-            
-            for (ApplicationInfo appInfo : installedApps) {
-                try {
-                    String appName = pm.getApplicationLabel(appInfo).toString();
-                    String packageName = appInfo.packageName;
-                    boolean isSystemApp = (appInfo.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
-                    
-                    AppInfo app = new AppInfo(
-                        appName,
-                        packageName,
-                        pm.getApplicationIcon(appInfo),
-                        isSystemApp
-                    );
-                    
-                    // 从配置中加载启用状态
-                    app.setEnabled(configManager.isAppEnabled(packageName));
-                    
-                    apps.add(app);
-                } catch (Exception e) {
-                    // 忽略无法获取信息的应用
-                    e.printStackTrace();
-                }
-            }
-            
-            // 按应用名称排序
-            Collections.sort(apps, new Comparator<AppInfo>() {
-                @Override
-                public int compare(AppInfo o1, AppInfo o2) {
-                    return o1.getAppName().compareToIgnoreCase(o2.getAppName());
-                }
-            });
-            
-            return apps;
-        }
-        
-        @Override
-        protected void onPostExecute(List<AppInfo> apps) {
-            allApps = apps;
-            adapter.setAppList(apps);
-            
-            progressBar.setVisibility(View.GONE);
-            recyclerView.setVisibility(View.VISIBLE);
-            
-            // 应用当前的过滤设置
-            filterApps(searchEditText.getText().toString());
-        }
-    }
 }

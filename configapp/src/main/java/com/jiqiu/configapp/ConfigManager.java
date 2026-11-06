@@ -21,7 +21,7 @@ public class ConfigManager {
     
     private final Context context;
     private final Gson gson;
-    private ModuleConfig config;
+    private static volatile ModuleConfig config;
     
     static {
         // Configure Shell to use root
@@ -31,14 +31,16 @@ public class ConfigManager {
                 .setTimeout(30));
     }
     
+    public static void initializeShell() { /* triggers static initialization */ }
+
     public ConfigManager(Context context) {
-        this.context = context;
+        this.context = context.getApplicationContext();
         this.gson = new GsonBuilder().setPrettyPrinting().create();
         
         // Ensure we get root shell on creation
         Shell.getShell();
         
-        loadConfig();
+        if (config == null) loadConfig();
     }
     
     public boolean isRootAvailable() {
@@ -80,6 +82,7 @@ public class ConfigManager {
             String json = String.join("\n", result.getOut());
             try {
                 config = gson.fromJson(json, ModuleConfig.class);
+                if (config == null) config = new ModuleConfig();
             } catch (Exception e) {
                 Log.e(TAG, "Failed to parse config", e);
                 config = new ModuleConfig();
@@ -98,6 +101,10 @@ public class ConfigManager {
         Log.i(TAG, "Configuration reloaded");
     }
     
+    private static String quote(String value) {
+        return "'" + value.replace("'", "'\"'\"'") + "'";
+    }
+
     public void saveConfig() {
         String json = gson.toJson(config);
         // Write to temp file first
@@ -108,8 +115,10 @@ public class ConfigManager {
             writer.close();
             
             // Copy to module directory with root
-            Shell.cmd("cp " + tempFile + " " + CONFIG_FILE).exec();
-            Shell.cmd("chmod 644 " + CONFIG_FILE).exec();
+            Shell.Result published = Shell.cmd("cp " + quote(tempFile) + " " + quote(CONFIG_FILE + ".new")
+                + " && chmod 644 " + quote(CONFIG_FILE + ".new")
+                + " && mv -f " + quote(CONFIG_FILE + ".new") + " " + quote(CONFIG_FILE)).exec();
+            if (!published.isSuccess()) Log.e(TAG, "Failed to publish configuration");
             
             // Clean up temp file
             new File(tempFile).delete();
@@ -130,14 +139,13 @@ public class ConfigManager {
             config.perAppConfig.put(packageName, appConfig);
         }
         appConfig.enabled = enabled;
-        saveConfig();
-        
         // 自动部署或清理 SO 文件
         if (enabled) {
             deploySoFilesToApp(packageName);
         } else {
             cleanupAppSoFiles(packageName);
         }
+        saveConfig();
     }
     
     public List<SoFile> getAppSoFiles(String packageName) {
@@ -402,7 +410,7 @@ public class ConfigManager {
             // Create gadget config JSON
             String configJson;
             if ("script".equals(gadgetConfig.mode)) {
-                configJson = String.format(
+                configJson = String.format(java.util.Locale.ROOT,
                     "{\n" +
                     "  \"interaction\": {\n" +
                     "    \"type\": \"script\",\n" +
@@ -412,7 +420,7 @@ public class ConfigManager {
                     gadgetConfig.scriptPath
                 );
             } else {
-                configJson = String.format(
+                configJson = String.format(java.util.Locale.ROOT,
                     "{\n" +
                     "  \"interaction\": {\n" +
                     "    \"type\": \"listen\",\n" +
@@ -500,14 +508,23 @@ public class ConfigManager {
             }
             
             // Set SELinux context for the directory
-            Shell.cmd("chcon u:object_r:app_data_file:s0 \"" + filesDir + "\"").exec();
+            Shell.cmd("restorecon -F " + quote(filesDir)).exec();
         } else {
             Log.e(TAG, "Failed to get package UID");
         }
         
+        Shell.Result labelResult = Shell.cmd("ls -Zd " + quote(filesDir)).exec();
+        String label = labelResult.isSuccess() && !labelResult.getOut().isEmpty()
+            ? labelResult.getOut().get(0).trim().split("\\s+")[0] : "";
+        if (!label.matches("[a-zA-Z0-9_:,]+")) {
+            Log.e(TAG, "Cannot determine target SELinux label; deployment cancelled");
+            return;
+        }
         // Copy each SO file configured for this app
         for (SoFile soFile : appConfig.soFiles) {
             // Use original filename
+            if (soFile.name == null || soFile.name.isEmpty() || soFile.name.contains("/")
+                    || soFile.name.equals(".") || soFile.name.equals("..")) continue;
             String destPath = filesDir + "/" + soFile.name;
             
             // Check if source file exists
@@ -526,43 +543,20 @@ public class ConfigManager {
             Shell.cmd("mkdir -p \"" + filesDir + "\"").exec();
             Shell.cmd("chmod 755 \"" + filesDir + "\"").exec();
             
-            // Copy file using cp with force flag
-            Shell.Result result = Shell.cmd("cp -f \"" + soFile.storedPath + "\" \"" + destPath + "\"").exec();
-            
+            // Publish a new inode atomically. Truncating a mapped library can cause SIGBUS
+            // in an already-running target process, even after dlopen succeeded.
+            String stagedPath = destPath + "." + java.util.UUID.randomUUID() + ".tmp";
+            String owner = uid.matches("[0-9]+") ? " && chown " + uid + ":" + uid + " " + quote(stagedPath) : "";
+            Shell.Result result = Shell.cmd("cp " + quote(soFile.storedPath) + " " + quote(stagedPath)
+                + " && chmod 755 " + quote(stagedPath) + owner
+                + " && chcon " + quote(label) + " " + quote(stagedPath)
+                + " && mv -f " + quote(stagedPath) + " " + quote(destPath)).exec();
             if (!result.isSuccess()) {
-                Log.e(TAG, "Failed with cp, trying cat method");
-                Log.e(TAG, "cp error: " + String.join("\n", result.getErr()));
-                // Fallback to cat method
-                result = Shell.cmd("cat \"" + soFile.storedPath + "\" > \"" + destPath + "\"").exec();
-                
-                if (!result.isSuccess()) {
-                    Log.e(TAG, "Also failed with cat method");
-                    Log.e(TAG, "cat error: " + String.join("\n", result.getErr()));
-                }
+                Shell.cmd("rm -f " + quote(stagedPath)).exec();
+                Log.e(TAG, "Atomic SO deployment failed: " + String.join("\n", result.getErr()));
+                continue;
             }
-            
-            // Set permissions - SO files need to be readable and executable
-            Shell.Result chmodResult = Shell.cmd("chmod 755 \"" + destPath + "\"").exec();
-            if (!chmodResult.isSuccess()) {
-                Log.e(TAG, "Failed to set permissions: " + String.join("\n", chmodResult.getErr()));
-            }
-            
-            // Set ownership to match the app's UID
-            if (!uid.isEmpty()) {
-                Shell.Result chownResult = Shell.cmd("chown " + uid + ":" + uid + " \"" + destPath + "\"").exec();
-                if (!chownResult.isSuccess()) {
-                    Log.e(TAG, "Failed to set ownership: " + String.join("\n", chownResult.getErr()));
-                    // Try alternative method
-                    Shell.cmd("chown " + uid + ".app_" + uid + " \"" + destPath + "\"").exec();
-                }
-            }
-            
-            // Set SELinux context to match app's data files
-            Shell.Result contextResult = Shell.cmd("chcon u:object_r:app_data_file:s0 \"" + destPath + "\"").exec();
-            if (!contextResult.isSuccess()) {
-                Log.w(TAG, "Failed to set SELinux context (this may be normal on some devices)");
-            }
-            
+
             // Verify the file was copied with correct permissions
             Shell.Result verifyResult = Shell.cmd("ls -laZ \"" + destPath + "\" 2>/dev/null").exec();
             if (verifyResult.isSuccess() && !verifyResult.getOut().isEmpty()) {

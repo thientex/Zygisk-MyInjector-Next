@@ -100,7 +100,7 @@ public class SoManagerFragment extends Fragment {
         
         // Check root access
         if (!configManager.isRootAvailable()) {
-            Toast.makeText(getContext(), "需要Root权限", Toast.LENGTH_LONG).show();
+            Toast.makeText(getContext(), Localized.text(R.string.text_root_access_is_required), Toast.LENGTH_LONG).show();
         } else {
             configManager.ensureModuleDirectories();
             // Also ensure common directories exist
@@ -128,10 +128,10 @@ public class SoManagerFragment extends Fragment {
     }
     
     private void showAddSoDialog() {
-        String[] options = {"浏览文件系统", "从外部文件管理器选择", "手动输入路径"};
+        String[] options = {Localized.text(R.string.text_browse_files), Localized.text(R.string.text_choose_with_a_file_manager), Localized.text(R.string.text_enter_a_path_manually)};
         
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("添加SO文件")
+                .setTitle(Localized.text(R.string.text_add_an_so_file))
                 .setItems(options, (dialog, which) -> {
                     if (which == 0) {
                         openFileBrowser();
@@ -151,11 +151,11 @@ public class SoManagerFragment extends Fragment {
             "/sdcard",
             "/sdcard/Download",
             "/storage/emulated/0",
-            "自定义路径..."
+            Localized.text(R.string.text_custom_path)
         };
         
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("选择起始目录")
+                .setTitle(Localized.text(R.string.text_choose_a_starting_folder))
                 .setItems(paths, (dialog, which) -> {
                     if (which == paths.length - 1) {
                         // Custom path
@@ -174,12 +174,12 @@ public class SoManagerFragment extends Fragment {
         View view = getLayoutInflater().inflate(R.layout.dialog_input, null);
         android.widget.EditText editText = view.findViewById(android.R.id.edit);
         editText.setText("/");
-        editText.setHint("输入起始路径");
+        editText.setHint(Localized.text(R.string.text_enter_a_starting_path));
         
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("自定义起始路径")
+                .setTitle(Localized.text(R.string.text_custom_starting_path))
                 .setView(view)
-                .setPositiveButton("确定", (dialog, which) -> {
+                .setPositiveButton(Localized.text(R.string.text_ok), (dialog, which) -> {
                     String path = editText.getText().toString().trim();
                     if (!path.isEmpty()) {
                         Intent intent = new Intent(getContext(), FileBrowserActivity.class);
@@ -188,7 +188,7 @@ public class SoManagerFragment extends Fragment {
                         fileBrowserLauncher.launch(intent);
                     }
                 })
-                .setNegativeButton("取消", null)
+                .setNegativeButton(Localized.text(R.string.text_cancel), null)
                 .show();
     }
     
@@ -212,15 +212,15 @@ public class SoManagerFragment extends Fragment {
         editText.setHint("/data/local/tmp/example.so");
         
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("输入SO文件路径")
+                .setTitle(Localized.text(R.string.text_enter_the_so_file_path))
                 .setView(view)
-                .setPositiveButton("添加", (dialog, which) -> {
+                .setPositiveButton(Localized.text(R.string.text_add), (dialog, which) -> {
                     String path = editText.getText().toString().trim();
                     if (!path.isEmpty()) {
                         showDeleteOriginalDialog(path);
                     }
                 })
-                .setNegativeButton("取消", null)
+                .setNegativeButton(Localized.text(R.string.text_cancel), null)
                 .show();
     }
     
@@ -230,21 +230,21 @@ public class SoManagerFragment extends Fragment {
         if (path != null) {
             showDeleteOriginalDialog(path);
         } else {
-            Toast.makeText(getContext(), "无法获取文件路径，请尝试其他方式", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), Localized.text(R.string.text_unable_to_resolve_the_path_try_another_method), Toast.LENGTH_SHORT).show();
         }
     }
     
     private void showDeleteOriginalDialog(String path) {
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("删除原文件")
-                .setMessage("是否删除原始SO文件？\n\n文件路径：" + path)
-                .setPositiveButton("删除原文件", (dialog, which) -> {
+                .setTitle(Localized.text(R.string.text_delete_original_file))
+                .setMessage(Localized.text(R.string.text_delete_the_original_so_file_n_npath) + path)
+                .setPositiveButton(Localized.text(R.string.text_delete_original_file), (dialog, which) -> {
                     addSoFile(path, true);
                 })
-                .setNegativeButton("保留原文件", (dialog, which) -> {
+                .setNegativeButton(Localized.text(R.string.text_keep_original), (dialog, which) -> {
                     addSoFile(path, false);
                 })
-                .setNeutralButton("取消", null)
+                .setNeutralButton(Localized.text(R.string.text_cancel), null)
                 .show();
     }
     
@@ -252,7 +252,7 @@ public class SoManagerFragment extends Fragment {
         // Verify file exists
         Shell.Result result = Shell.cmd("test -f \"" + path + "\" && echo 'exists'").exec();
         if (!result.isSuccess() || result.getOut().isEmpty()) {
-            Toast.makeText(getContext(), "文件不存在: " + path, Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), Localized.text(R.string.text_file_does_not_exist) + path, Toast.LENGTH_SHORT).show();
             return;
         }
         
@@ -261,23 +261,23 @@ public class SoManagerFragment extends Fragment {
         
         // Reload the list
         loadSoFiles();
-        Toast.makeText(getContext(), "SO文件已添加", Toast.LENGTH_SHORT).show();
+        Toast.makeText(getContext(), Localized.text(R.string.text_so_file_added), Toast.LENGTH_SHORT).show();
     }
     
     private void showDeleteConfirmation(ConfigManager.SoFile soFile) {
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("删除SO文件")
-                .setMessage("确定要删除 " + soFile.name + " 吗？")
-                .setPositiveButton("删除", (dialog, which) -> {
+                .setTitle(Localized.text(R.string.text_delete_so_file))
+                .setMessage(Localized.text(R.string.text_delete) + soFile.name + Localized.text(R.string.text_))
+                .setPositiveButton(Localized.text(R.string.text_delete_102), (dialog, which) -> {
                     deleteSoFile(soFile);
                 })
-                .setNegativeButton("取消", null)
+                .setNegativeButton(Localized.text(R.string.text_cancel), null)
                 .show();
     }
     
     private void deleteSoFile(ConfigManager.SoFile soFile) {
         configManager.removeGlobalSoFile(soFile);
         loadSoFiles();
-        Toast.makeText(getContext(), "SO文件已删除", Toast.LENGTH_SHORT).show();
+        Toast.makeText(getContext(), Localized.text(R.string.text_so_file_deleted), Toast.LENGTH_SHORT).show();
     }
 }

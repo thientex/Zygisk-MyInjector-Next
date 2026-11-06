@@ -46,7 +46,7 @@ public class FileBrowserActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        getSupportActionBar().setTitle("选择SO文件");
+        getSupportActionBar().setTitle(Localized.text(R.string.text_choose_an_so_file));
         
         currentPathText = findViewById(R.id.currentPath);
         recyclerView = findViewById(R.id.recyclerView);
@@ -68,7 +68,7 @@ public class FileBrowserActivity extends AppCompatActivity {
         
         // Check if we have root access
         if (!Shell.getShell().isRoot()) {
-            Toast.makeText(this, "需要Root权限才能浏览文件", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, Localized.text(R.string.text_root_access_is_required_to_browse_files), Toast.LENGTH_LONG).show();
             Log.e(TAG, "No root access");
         }
         
@@ -238,10 +238,10 @@ public class FileBrowserActivity extends AppCompatActivity {
                 
                 if (item.isDirectory) {
                     icon.setImageResource(android.R.drawable.ic_menu_agenda);
-                    info.setText("文件夹");
+                    info.setText(Localized.text(R.string.text_folder));
                 } else {
                     icon.setImageResource(android.R.drawable.ic_menu_save);
-                    info.setText("SO文件");
+                    info.setText(Localized.text(R.string.text_so_file));
                 }
                 
                 if (!item.isReadable) {
@@ -263,7 +263,7 @@ public class FileBrowserActivity extends AppCompatActivity {
                     } else if (item.isDirectory) {
                         if (!item.isReadable) {
                             Toast.makeText(FileBrowserActivity.this, 
-                                    "没有权限访问此目录", Toast.LENGTH_SHORT).show();
+                                    Localized.text(R.string.text_access_to_this_folder_was_denied), Toast.LENGTH_SHORT).show();
                             return;
                         }
                         if ("/".equals(currentPath)) {

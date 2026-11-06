@@ -1,4 +1,5 @@
 #include <cstring>
+#include <string>
 #include <thread>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -28,12 +29,18 @@ public:
     }
 
     void preAppSpecialize(AppSpecializeArgs *args) override {
+        if (!args->nice_name || !args->app_data_dir) return;
         auto package_name = env->GetStringUTFChars(args->nice_name, nullptr);
         auto app_data_dir = env->GetStringUTFChars(args->app_data_dir, nullptr);
 //        if (strcmp(package_name, AimPackageName) == 0){
 //            args->runtime_flags=8451;
 //        }
-        LOGI("preAppSpecialize %s %s %d", package_name, app_data_dir,args->runtime_flags);
+        if (!package_name || !app_data_dir) {
+            if (package_name) env->ReleaseStringUTFChars(args->nice_name, package_name);
+            if (app_data_dir) env->ReleaseStringUTFChars(args->app_data_dir, app_data_dir);
+            return;
+        }
+        LOGI("preAppSpecialize %s %s %d", package_name, app_data_dir, args->runtime_flags);
 
         preSpecialize(package_name, app_data_dir);
         env->ReleaseStringUTFChars(args->nice_name, package_name);
@@ -45,18 +52,19 @@ public:
             // Get JavaVM
             JavaVM *vm = nullptr;
             if (env->GetJavaVM(&vm) == JNI_OK) {
-                // Get injection delay from config
-                int delay = Config::getInjectionDelay();
-                LOGI("Main thread blocking for %d seconds before injection", delay);
-                
-                // Block main thread for the delay period
-                sleep(delay);
-                
-                // Then start hack thread with JavaVM
-                std::thread hack_thread(hack_prepare, _data_dir, _package_name, data, length, vm);
-                hack_thread.detach();
+                // Never block app startup: the worker owns its arguments and delay.
+                std::string directory(_data_dir), package(_package_name);
+                delete[] _data_dir;
+                delete[] _package_name;
+                _data_dir = _package_name = nullptr;
+                std::thread([directory, package, vm]() {
+                    hack_prepare(directory.c_str(), package.c_str(), nullptr, 0, vm);
+                }).detach();
             } else {
                 LOGE("Failed to get JavaVM");
+                delete[] _data_dir;
+                delete[] _package_name;
+                _data_dir = _package_name = nullptr;
             }
         }
     }
@@ -65,10 +73,10 @@ private:
     Api *api;
     JNIEnv *env;
     bool enable_hack;
-    char *_data_dir;
-    char *_package_name;
-    void *data;
-    size_t length;
+    char *_data_dir = nullptr;
+    char *_package_name = nullptr;
+    void *data = nullptr;
+    size_t length = 0;
     
     void preSpecialize(const char *package_name, const char *app_data_dir) {
         // Read configuration

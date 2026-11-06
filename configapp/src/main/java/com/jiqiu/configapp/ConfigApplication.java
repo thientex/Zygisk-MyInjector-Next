@@ -21,8 +21,24 @@ public class ConfigApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        Localized.application = this;
+        androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
+            androidx.core.os.LocaleListCompat.forLanguageTags(
+                getSharedPreferences("MyInjectorSettings", MODE_PRIVATE).getString("language", "")));
+        // Initialize shell options before any asynchronous root request.
+        ConfigManager.initializeShell();
         Log.d(TAG, "Application onCreate - registering receiver dynamically");
         
+        IntentFilter packages = new IntentFilter();
+        packages.addAction(android.content.Intent.ACTION_PACKAGE_ADDED);
+        packages.addAction(android.content.Intent.ACTION_PACKAGE_REMOVED);
+        packages.addAction(android.content.Intent.ACTION_PACKAGE_CHANGED);
+        packages.addDataScheme("package");
+        android.content.BroadcastReceiver catalogReceiver = new android.content.BroadcastReceiver() {
+            @Override public void onReceive(Context context, android.content.Intent intent) { AppCatalog.clear(); }
+        };
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(catalogReceiver, packages, Context.RECEIVER_NOT_EXPORTED);
+        else registerReceiver(catalogReceiver, packages);
         // 动态注册 ConfigApplyReceiver
         configReceiver = new ConfigApplyReceiver();
         IntentFilter filter = new IntentFilter(ACTION_APPLY_CONFIG);
@@ -37,6 +53,12 @@ public class ConfigApplication extends Application {
         Log.i(TAG, "ConfigApplyReceiver registered dynamically - invisible to third-party apps");
     }
     
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration config) {
+        super.onConfigurationChanged(config);
+        AppCatalog.clear();
+    }
+
     @Override
     public void onTerminate() {
         super.onTerminate();
