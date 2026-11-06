@@ -17,7 +17,7 @@ final class ScreenInsets {
                 .build();
         });
         float scale = root.getResources().getConfiguration().fontScale;
-        navigation.setMinimumHeight((int) ((80 + Math.max(0, scale - 1) * 32)
+        navigation.setMinimumHeight((int) ((68 + Math.max(0, scale - 1) * 16)
             * root.getResources().getDisplayMetrics().density));
     }
 }

@@ -1,6 +1,15 @@
-# Private upgrade 1.4.2
+# Private upgrade 1.4.3
 
 This working tree is based on jiqiu2022/Zygisk-MyInjector. The original MIT license and attribution are retained. Nothing has been pushed to GitHub.
+
+## Compact spacing and full close in 1.4.3
+
+- Header logo/title margin is 11dp instead of 16dp, approximately one third closer.
+- Navigation uses a 68dp minimum height plus a smaller font-scale allowance. Native Skia/Fira Sans layout tests measure the icon-to-visible-text gap at 25px → 13px for normal fonts and 41px → 21px at 1.5x configuration in the mdpi test. Light/dark bounds, ellipsis and system-bar handling still pass.
+- The denied-root dialog now has exactly one button: Close app. The retry button and automatic live-process retry on return from the root manager are removed, as requested.
+- Close app calls `finishAndRemoveTask()` and then `Process.killProcess(Process.myPid())` in a finally block. This ends this application's own process without su, root-manager-specific APIs, clearing app data or killing other apps. Saved configuration remains on disk.
+- Android has no standard API that forces every root manager/kernel to refresh authorization for an existing PID. This release implements the user's explicit process-termination fallback; it does not claim universal live-process reauthorization on SukiSU/KernelSU.
+- Robolectric verifies the dialog has no neutral/negative button, clicking Close kills the app PID, task removal is requested, and the process-termination call still happens if task removal throws. Android process killing is shadowed in this test; it does not kill the test JVM or validate a physical SukiSU device.
 
 ## Root, layout and scrolling changes in 1.4.2
 

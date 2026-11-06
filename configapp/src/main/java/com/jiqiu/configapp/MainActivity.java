@@ -25,7 +25,6 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
     private androidx.appcompat.app.AlertDialog rootDialog;
     private boolean rootGranted;
     private boolean checkingRoot;
-    private boolean recheckOnResume;
     private int selectedTab = R.id.navigation_so_manager;
 
     @Override
@@ -62,13 +61,7 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
             pendingRootUi = () -> {
                 checking.setVisibility(android.view.View.GONE);
                 if (!granted) {
-                    rootDialog = new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                        .setTitle(R.string.root_required).setMessage(getString(R.string.root_message)
-                            + "\n\n" + RootShell.failure())
-                        .setCancelable(false)
-                        .setNeutralButton(R.string.root_retry, (dialog, which) -> startRootCheck(true))
-                        .setPositiveButton(R.string.close, (dialog, which) -> finishAndRemoveTask())
-                        .show();
+                    rootDialog = RootDeniedDialog.show(this, RootShell.failure());
                     return;
                 }
                 rootGranted = true;
@@ -91,19 +84,9 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
     }
 
     @Override
-    protected void onStop() {
-        super.onStop();
-        if (!rootGranted) recheckOnResume = true;
-    }
-
-    @Override
     protected void onPostResume() {
         super.onPostResume();
         renderRootResult();
-        if (recheckOnResume && !rootGranted && !checkingRoot) {
-            recheckOnResume = false;
-            startRootCheck(true);
-        }
     }
 
     private void renderRootResult() {

@@ -19,6 +19,7 @@ import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
 import static org.junit.Assert.*;
 
+@org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
 @RunWith(RobolectricTestRunner.class)
 @Config(application = Application.class, sdk = 34, qualifiers = "vi-rVN-w400dp-h850dp-mdpi")
 public class NavigationLayoutTest {
@@ -64,9 +65,20 @@ public class NavigationLayoutTest {
             ViewCompat.dispatchApplyWindowInsets(root, new WindowInsetsCompat.Builder()
                 .setInsets(WindowInsetsCompat.Type.systemBars(), Insets.of(0, 24, 0, 48))
                 .setInsetsIgnoringVisibility(WindowInsetsCompat.Type.systemBars(), Insets.of(0, 24, 0, 48)).build());
-            root.measure(View.MeasureSpec.makeMeasureSpec(400, View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(850, View.MeasureSpec.EXACTLY));
-            root.layout(0, 0, 400, 850);
+            int compactHeight = nav.getMinimumHeight();
+            nav.setMinimumHeight((int) (80 + Math.max(0, fontScale - 1) * 32));
+            measure(root);
+            int[] ids = {R.id.navigation_so_manager, R.id.navigation_apps, R.id.navigation_settings};
+            int[] previousGaps = new int[ids.length];
+            for (int i = 0; i < ids.length; i++) previousGaps[i] = iconLabelGap(nav.findViewById(ids[i]));
+            nav.setMinimumHeight(compactHeight);
+            measure(root);
+            for (int i = 0; i < ids.length; i++) {
+                int gap = iconLabelGap(nav.findViewById(ids[i]));
+                System.out.println("font=" + fontScale + " item=" + ids[i] + " oldGap=" + previousGaps[i] + " compactGap=" + gap);
+                assertTrue("icon/label gap roughly halved", Math.abs(gap - previousGaps[i] / 2f) <= 3f);
+                assertTrue("icon and text do not overlap", gap >= 0);
+            }
             assertEquals(48, root.getPaddingBottom());
             assertEquals("navigation must not add system bottom padding again", 0, nav.getPaddingBottom());
             Rect navBounds = new Rect(); nav.getGlobalVisibleRect(navBounds);
@@ -85,8 +97,24 @@ public class NavigationLayoutTest {
             View title = host.findViewById(R.id.header_title);
             int[] logoPosition = new int[2], titlePosition = new int[2];
             logo.getLocationOnScreen(logoPosition); title.getLocationOnScreen(titlePosition);
-            assertTrue("explicit gap between logo and title", titlePosition[0] - logoPosition[0] - logo.getWidth() >= 16);
+            assertEquals("logo/title gap reduced by about a third", 11, titlePosition[0] - logoPosition[0] - logo.getWidth());
         }
+    }
+    private void measure(View root) {
+        root.measure(View.MeasureSpec.makeMeasureSpec(400, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(850, View.MeasureSpec.EXACTLY));
+        root.layout(0, 0, 400, 850);
+    }
+    private int iconLabelGap(View item) {
+        View icon = item.findViewById(com.google.android.material.R.id.navigation_bar_item_icon_view);
+        View label = item.findViewById(com.google.android.material.R.id.navigation_bar_item_large_label_view);
+        if (label.getVisibility() != View.VISIBLE)
+            label = item.findViewById(com.google.android.material.R.id.navigation_bar_item_small_label_view);
+        int[] iconPosition = new int[2], labelPosition = new int[2];
+        icon.getLocationOnScreen(iconPosition); label.getLocationOnScreen(labelPosition);
+        TextView text = (TextView) label;
+        return labelPosition[1] + text.getBaseline() + text.getPaint().getFontMetricsInt().ascent
+            - iconPosition[1] - icon.getHeight();
     }
     private void assertContained(Rect parent, View child) {
         assertEquals(View.VISIBLE, child.getVisibility());

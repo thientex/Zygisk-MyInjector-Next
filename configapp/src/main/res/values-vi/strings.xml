@@ -110,7 +110,7 @@
     <string name="language">"Ngôn ngữ"</string>
     <string name="language_system">"Theo hệ thống"</string>
     <string name="root_required">"Cần cấp quyền root"</string>
-    <string name="root_message">"Hãy cấp quyền root cho MyInjector trong trình quản lý root rồi mở lại ứng dụng. Ứng dụng sẽ đóng."</string>
+    <string name="root_message">"Nhấn Đóng ứng dụng để kết thúc hoàn toàn tiến trình, cấp quyền root trong trình quản lý root, rồi mở lại MyInjector. Cấu hình đã lưu vẫn được giữ nguyên."</string>
     <string name="close">"Đóng ứng dụng"</string>
     <string name="root_check">"Đang yêu cầu quyền root…"</string>
     <string name="language_english">English</string>
