@@ -38,6 +38,8 @@ import java.util.List;
 public class AppListFragment extends Fragment implements AppListAdapter.OnAppToggleListener, AppListAdapter.OnAppClickListener {
 
     private static final java.util.concurrent.ExecutorService LOADER = ConfigManager.IO;
+    private final android.os.Handler searchHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private Runnable pendingSearch;
     private RecyclerView recyclerView;
     private AppListAdapter adapter;
     private TextInputEditText searchEditText;
@@ -70,10 +72,21 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
         if (!hidden && getView() != null) {
             if (AppCatalog.memory == null) loadApps();
             else if (allApps != null && configManager != null) {
-                for (AppInfo app : allApps) app.setEnabled(configManager.isAppEnabled(app.getPackageName()));
+                boolean changed = false;
+                for (AppInfo app : allApps) {
+                    boolean enabled = configManager.isAppEnabled(app.getPackageName());
+                    if (enabled != app.isEnabled()) { app.setEnabled(enabled); changed = true; }
+                }
+                if (changed) adapter.refreshOrder();
                 filterApps(searchEditText.getText().toString());
             }
         }
+    }
+
+    @Override
+    public void onDestroyView() {
+        if (pendingSearch != null) searchHandler.removeCallbacks(pendingSearch);
+        super.onDestroyView();
     }
 
     private void initViews(View view) {
@@ -88,6 +101,8 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
         adapter.setOnAppClickListener(this);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(adapter);
+        recyclerView.setItemAnimator(null);
+        recyclerView.setItemViewCacheSize(6);
     }
 
     private void setupSearchView() {
@@ -97,7 +112,10 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                filterApps(s.toString());
+                if (pendingSearch != null) searchHandler.removeCallbacks(pendingSearch);
+                String query = s.toString();
+                pendingSearch = () -> filterApps(query);
+                searchHandler.postDelayed(pendingSearch, 100);
             }
 
             @Override
@@ -115,7 +133,7 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
         final View currentView = getView();
         LOADER.execute(() -> {
             ConfigManager manager = new ConfigManager(context);
-            manager.ensureModuleDirectories();
+
             List<AppInfo> apps = AppCatalog.memory;
             if (apps == null) apps = AppCatalog.load(context);
             for (AppInfo app : apps) app.setEnabled(manager.isAppEnabled(app.getPackageName()));
@@ -151,7 +169,10 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
             new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
                 if (result == ConfigManager.ApplyResult.FAILED) {
                     appInfo.setEnabled(!isEnabled);
-                    if (getView() != null) filterApps(searchEditText.getText().toString());
+                    if (getView() != null) {
+                        adapter.refreshOrder();
+                        filterApps(searchEditText.getText().toString());
+                    }
                 }
                 int message = result == ConfigManager.ApplyResult.FAILED ? R.string.apply_failed
                     : result == ConfigManager.ApplyResult.STOP_FAILED ? R.string.apply_stop_failed

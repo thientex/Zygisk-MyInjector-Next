@@ -59,6 +59,7 @@ public class ConfigApplyReceiver extends BroadcastReceiver {
         // 在后台线程处理，避免阻塞主线程
         ConfigManager.IO.execute(() -> {
             try {
+                if (!RootShell.authorize(false)) return;
                 ConfigManager configManager = new ConfigManager(context);
                 
                 // 确保目录存在
@@ -66,10 +67,10 @@ public class ConfigApplyReceiver extends BroadcastReceiver {
                 
                 // 如果提供了配置文件路径，复制到模块目录
                 if (tmpConfigPath != null && !tmpConfigPath.isEmpty()) {
-                    Shell.Result checkResult = Shell.cmd("test -f \"" + tmpConfigPath + "\" && echo 'exists'").exec();
+                    Shell.Result checkResult = RootShell.cmd("test -f \"" + tmpConfigPath + "\" && echo 'exists'").exec();
                     if (checkResult.isSuccess() && !checkResult.getOut().isEmpty()) {
                         Log.i(TAG, "Copying main config: " + tmpConfigPath + " -> " + ConfigManager.CONFIG_FILE);
-                        Shell.Result copyResult = Shell.cmd(
+                        Shell.Result copyResult = RootShell.cmd(
                             "cp \"" + tmpConfigPath + "\" \"" + ConfigManager.CONFIG_FILE + "\"",
                             "chmod 644 \"" + ConfigManager.CONFIG_FILE + "\""
                         ).exec();
@@ -88,7 +89,7 @@ public class ConfigApplyReceiver extends BroadcastReceiver {
                 
                 // 如果提供了 Gadget 配置文件，复制到应用数据目录
                 if (tmpGadgetConfigPath != null && !tmpGadgetConfigPath.isEmpty()) {
-                    Shell.Result checkResult = Shell.cmd("test -f \"" + tmpGadgetConfigPath + "\" && echo 'exists'").exec();
+                    Shell.Result checkResult = RootShell.cmd("test -f \"" + tmpGadgetConfigPath + "\" && echo 'exists'").exec();
                     if (checkResult.isSuccess() && !checkResult.getOut().isEmpty()) {
                         String filesDir = "/data/data/" + packageName + "/files";
                         
@@ -99,9 +100,9 @@ public class ConfigApplyReceiver extends BroadcastReceiver {
                         Log.i(TAG, "Copying gadget config: " + tmpGadgetConfigPath + " -> " + targetPath);
                         
                         // 创建目录
-                        Shell.cmd("mkdir -p \"" + filesDir + "\"").exec();
+                        RootShell.cmd("mkdir -p \"" + filesDir + "\"").exec();
                         
-                        Shell.Result copyResult = Shell.cmd(
+                        Shell.Result copyResult = RootShell.cmd(
                             "cp \"" + tmpGadgetConfigPath + "\" \"" + targetPath + "\"",
                             "chmod 644 \"" + targetPath + "\""
                         ).exec();
@@ -110,11 +111,11 @@ public class ConfigApplyReceiver extends BroadcastReceiver {
                             Log.i(TAG, "Gadget config copied successfully");
                             
                             // 设置正确的所有权
-                            Shell.Result uidResult = Shell.cmd("stat -c %u /data/data/" + packageName).exec();
+                            Shell.Result uidResult = RootShell.cmd("stat -c %u /data/data/" + packageName).exec();
                             if (uidResult.isSuccess() && !uidResult.getOut().isEmpty()) {
                                 String uid = uidResult.getOut().get(0).trim();
-                                Shell.cmd("chown " + uid + ":" + uid + " \"" + targetPath + "\"").exec();
-                                Shell.cmd("chcon u:object_r:app_data_file:s0 \"" + targetPath + "\"").exec();
+                                RootShell.cmd("chown " + uid + ":" + uid + " \"" + targetPath + "\"").exec();
+                                RootShell.cmd("chcon u:object_r:app_data_file:s0 \"" + targetPath + "\"").exec();
                             }
                         } else {
                             Log.e(TAG, "Failed to copy gadget config: " + String.join("\n", copyResult.getErr()));
@@ -135,10 +136,10 @@ public class ConfigApplyReceiver extends BroadcastReceiver {
                 
                 // 清理临时文件
                 if (tmpConfigPath != null && !tmpConfigPath.isEmpty()) {
-                    Shell.cmd("rm -f \"" + tmpConfigPath + "\"").exec();
+                    RootShell.cmd("rm -f \"" + tmpConfigPath + "\"").exec();
                 }
                 if (tmpGadgetConfigPath != null && !tmpGadgetConfigPath.isEmpty()) {
-                    Shell.cmd("rm -f \"" + tmpGadgetConfigPath + "\"").exec();
+                    RootShell.cmd("rm -f \"" + tmpGadgetConfigPath + "\"").exec();
                 }
                 
                 Log.i(TAG, "Config application completed successfully");

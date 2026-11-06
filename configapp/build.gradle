@@ -16,8 +16,8 @@ android {
         applicationId "com.jiqiu.configapp"
         minSdk 24
         targetSdk 34
-        versionCode 141
-        versionName "1.4.1-private"
+        versionCode 142
+        versionName "1.4.2-private"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -26,6 +26,15 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    testOptions {
+        unitTests.includeAndroidResources = true
+        unitTests.all {
+            systemProperty 'robolectric.dependency.repo.url', 'https://repo.maven.apache.org/maven2'
+            ['http.proxyHost', 'http.proxyPort', 'https.proxyHost', 'https.proxyPort', 'javax.net.ssl.trustStore'].each { key ->
+                if (System.getProperty(key) != null) systemProperty key, System.getProperty(key)
+            }
         }
     }
     bundle { language { enableSplit = false } }
@@ -58,6 +67,7 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.10.1'
 
     testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 }

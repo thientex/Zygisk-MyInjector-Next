@@ -18,9 +18,12 @@ repo = Path(__file__).resolve().parents[2]
 classpath = os.pathsep.join(map(str, [args.libsu_jar.resolve(), args.android_jar.resolve()]))
 sources = [repo / 'tests/host/android/text/TextUtils.java',
            repo / 'tests/host/RootProbeIntegration.java',
-           repo / 'configapp/src/main/java/com/jiqiu/configapp/RootProbe.java']
+           repo / 'configapp/src/main/java/com/jiqiu/configapp/RootProbe.java',
+           repo / 'configapp/src/main/java/com/jiqiu/configapp/RootShell.java',
+           repo / 'tests/host/RootShellIntegration.java']
 with tempfile.TemporaryDirectory(prefix='root-probe-') as output:
     subprocess.run([str(args.jdk / 'bin/javac'), '-cp', classpath, '-d', output,
                     *map(str, sources)], check=True)
-    subprocess.run([str(args.jdk / 'bin/java'), '-cp', output + os.pathsep + classpath,
-                    'com.jiqiu.configapp.RootProbeIntegration'], check=True, timeout=30)
+    for entry in ['RootProbeIntegration', 'RootShellIntegration']:
+        subprocess.run([str(args.jdk / 'bin/java'), '-cp', output + os.pathsep + classpath,
+                        'com.jiqiu.configapp.' + entry], check=True, timeout=30)

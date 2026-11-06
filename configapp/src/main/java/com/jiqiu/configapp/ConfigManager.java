@@ -24,28 +24,22 @@ public class ConfigManager {
     private final Gson gson;
     private static volatile ModuleConfig config;
     
-    static {
-        // Configure Shell to use root
-        Shell.enableVerboseLogging = BuildConfig.DEBUG;
-        Shell.setDefaultBuilder(Shell.Builder.create()
-                .setFlags(Shell.FLAG_REDIRECT_STDERR | Shell.FLAG_MOUNT_MASTER)
-                .setTimeout(30));
-    }
-    
-    public static void initializeShell() { /* triggers static initialization */ }
+    static { Shell.enableVerboseLogging = false; }
+
+    public static void initializeShell() { /* initialize the I/O queue without acquiring su */ }
 
     public ConfigManager(Context context) {
         this.context = context.getApplicationContext();
         this.gson = new GsonBuilder().setPrettyPrinting().create();
         
         // Ensure we get root shell on creation
-        Shell.getShell();
+        RootShell.get();
         
         if (config == null) loadConfig();
     }
     
     public boolean isRootAvailable() {
-        return Shell.getShell().isRoot();
+        return RootShell.get().isRoot();
     }
     
     public void ensureModuleDirectories() {
@@ -56,29 +50,29 @@ public class ConfigManager {
         }
         
         // Create module directories
-        Shell.Result result1 = Shell.cmd("mkdir -p " + MODULE_PATH).exec();
+        Shell.Result result1 = RootShell.cmd("mkdir -p " + MODULE_PATH).exec();
         if (!result1.isSuccess()) {
             Log.e(TAG, "Failed to create module directory: " + MODULE_PATH);
         }
         
-        Shell.Result result2 = Shell.cmd("mkdir -p " + SO_STORAGE_DIR).exec();
+        Shell.Result result2 = RootShell.cmd("mkdir -p " + SO_STORAGE_DIR).exec();
         if (!result2.isSuccess()) {
             Log.e(TAG, "Failed to create SO storage directory: " + SO_STORAGE_DIR);
         }
         
         // Set permissions
-        Shell.cmd("chmod 755 " + MODULE_PATH).exec();
-        Shell.cmd("chmod 755 " + SO_STORAGE_DIR).exec();
+        RootShell.cmd("chmod 755 " + MODULE_PATH).exec();
+        RootShell.cmd("chmod 755 " + SO_STORAGE_DIR).exec();
         
         // Verify directories exist
-        Shell.Result verify = Shell.cmd("ls -la " + MODULE_PATH).exec();
+        Shell.Result verify = RootShell.cmd("ls -la " + MODULE_PATH).exec();
         if (verify.isSuccess()) {
             Log.i(TAG, "Module directory ready: " + String.join("\n", verify.getOut()));
         }
     }
     
     private void loadConfig() {
-        Shell.Result result = Shell.cmd("cat " + CONFIG_FILE).exec();
+        Shell.Result result = RootShell.cmd("cat " + CONFIG_FILE).exec();
         if (result.isSuccess() && !result.getOut().isEmpty()) {
             String json = String.join("\n", result.getOut());
             try {
@@ -116,7 +110,7 @@ public class ConfigManager {
             writer.close();
             
             // Copy to module directory with root
-            Shell.Result published = Shell.cmd("cp " + quote(tempFile) + " " + quote(CONFIG_FILE + ".new")
+            Shell.Result published = RootShell.cmd("cp " + quote(tempFile) + " " + quote(CONFIG_FILE + ".new")
                 + " && chmod 644 " + quote(CONFIG_FILE + ".new")
                 + " && mv -f " + quote(CONFIG_FILE + ".new") + " " + quote(CONFIG_FILE)).exec();
             if (!published.isSuccess()) Log.e(TAG, "Failed to publish configuration");
@@ -182,12 +176,12 @@ public class ConfigManager {
         if (!safeFileName(name)) return ApplyResult.FAILED;
         String storedPath = SO_STORAGE_DIR + "/" + name;
         String stage = storedPath + "." + java.util.UUID.randomUUID() + ".tmp";
-        Shell.Result copied = Shell.cmd("mkdir -p " + quote(SO_STORAGE_DIR)
+        Shell.Result copied = RootShell.cmd("mkdir -p " + quote(SO_STORAGE_DIR)
             + " && cp " + quote(originalPath) + " " + quote(stage)
             + " && chmod 755 " + quote(stage)
             + " && mv -f " + quote(stage) + " " + quote(storedPath)).exec();
         if (!copied.isSuccess()) {
-            Shell.cmd("rm -f " + quote(stage)).exec();
+            RootShell.cmd("rm -f " + quote(stage)).exec();
             return ApplyResult.FAILED;
         }
         SoFile file = getAllSoFiles().stream().filter(f -> f.name.equals(name)).findFirst().orElse(null);
@@ -206,7 +200,7 @@ public class ConfigManager {
                 else if (result != ApplyResult.STOP_FAILED) result = ApplyResult.RESTARTED;
             }
         }
-        if (deleteOriginal && !originalPath.equals(storedPath)) Shell.cmd("rm -f " + quote(originalPath)).exec();
+        if (deleteOriginal && !originalPath.equals(storedPath)) RootShell.cmd("rm -f " + quote(originalPath)).exec();
         return result;
     }
 
@@ -218,7 +212,7 @@ public class ConfigManager {
         if (!packageName.matches("[a-zA-Z0-9_]+(?:\\.[a-zA-Z0-9_]+)+")
                 || packageName.equals(context.getPackageName())) return ApplyResult.STOP_FAILED;
         // Explicitly authorized by the user: a fresh process is required for the new mapping.
-        return Shell.cmd("am force-stop --user " + (android.os.Process.myUid() / 100000)
+        return RootShell.cmd("am force-stop --user " + (android.os.Process.myUid() / 100000)
             + " " + quote(packageName)).exec().isSuccess() ? ApplyResult.RESTARTED : ApplyResult.STOP_FAILED;
     }
 
@@ -250,7 +244,7 @@ public class ConfigManager {
         // Remove only files that this configuration used to own, after publication.
         if (previous != null) for (SoFile old : previous.soFiles) {
             if (safeFileName(old.name) && next.soFiles.stream().noneMatch(f -> old.name.equals(f.name)))
-                Shell.cmd("rm -f " + quote("/data/data/" + packageName + "/files/" + old.name)).exec();
+                RootShell.cmd("rm -f " + quote("/data/data/" + packageName + "/files/" + old.name)).exec();
         }
         return ApplyResult.valueOf(applied.name());
     }
@@ -266,12 +260,12 @@ public class ConfigManager {
         if (!saveConfig()) return ApplyResult.FAILED;
         ApplyResult result = ApplyResult.SAVED;
         for (String pkg : affected) {
-            Shell.cmd("rm -f " + quote("/data/data/" + pkg + "/files/" + soFile.name)).exec();
+            RootShell.cmd("rm -f " + quote("/data/data/" + pkg + "/files/" + soFile.name)).exec();
             ApplyResult stopped = stopTarget(pkg);
             if (stopped == ApplyResult.STOP_FAILED) result = stopped;
             else if (result != ApplyResult.STOP_FAILED) result = ApplyResult.RESTARTED;
         }
-        if (!Shell.cmd("rm -f " + quote(soFile.storedPath)).exec().isSuccess()) return ApplyResult.FAILED;
+        if (!RootShell.cmd("rm -f " + quote(soFile.storedPath)).exec().isSuccess()) return ApplyResult.FAILED;
         return result;
     }
 
@@ -428,7 +422,7 @@ public class ConfigManager {
         if (gadgetConfig != null) {
             // Check if gadget SO file exists in global storage
             String gadgetPath = SO_STORAGE_DIR + "/" + gadgetConfig.gadgetName;
-            Shell.Result checkResult = Shell.cmd("test -f \"" + gadgetPath + "\" && echo 'exists'").exec();
+            Shell.Result checkResult = RootShell.cmd("test -f \"" + gadgetPath + "\" && echo 'exists'").exec();
             
             if (checkResult.isSuccess() && !checkResult.getOut().isEmpty()) {
                 // Add gadget as a SO file
@@ -512,12 +506,12 @@ public class ConfigManager {
             String targetPath = filesDir + "/" + gadgetConfigName;
             
             String staged = targetPath + ".new";
-            Shell.Result copyResult = Shell.cmd("cp " + quote(tempFile) + " " + quote(staged)
+            Shell.Result copyResult = RootShell.cmd("cp " + quote(tempFile) + " " + quote(staged)
                 + " && chmod 644 " + quote(staged)
                 + " && mv -f " + quote(staged) + " " + quote(targetPath)).exec();
             if (copyResult.isSuccess()) {
                 // Set permissions
-                Shell.cmd("chmod 644 " + targetPath).exec();
+                RootShell.cmd("chmod 644 " + targetPath).exec();
                 Log.i(TAG, "Deployed gadget config to: " + targetPath);
             } else {
                 Log.e(TAG, "Failed to deploy gadget config: " + String.join("\n", copyResult.getErr()));
@@ -539,7 +533,7 @@ public class ConfigManager {
         if (appConfig.soFiles.isEmpty()) return true;
         
         // First check if we have root access
-        if (!Shell.getShell().isRoot()) {
+        if (!RootShell.get().isRoot()) {
             Log.e(TAG, "No root access available!");
             return false;
         }
@@ -550,7 +544,7 @@ public class ConfigManager {
         Log.i(TAG, "Deploying SO files to: " + filesDir);
         
         // Create directory without su -c for better compatibility
-        Shell.Result mkdirResult = Shell.cmd("mkdir -p " + filesDir).exec();
+        Shell.Result mkdirResult = RootShell.cmd("mkdir -p " + filesDir).exec();
         if (!mkdirResult.isSuccess()) {
             Log.e(TAG, "Failed to create directory: " + filesDir);
             Log.e(TAG, "Error: " + String.join("\n", mkdirResult.getErr()));
@@ -558,28 +552,28 @@ public class ConfigManager {
         }
         
         // Set proper permissions and ownership for the files directory
-        Shell.cmd("chmod 771 " + filesDir).exec();
+        RootShell.cmd("chmod 771 " + filesDir).exec();
         
         // Get UID and GID for the package
-        Shell.Result uidResult = Shell.cmd("stat -c %u /data/data/" + packageName).exec();
+        Shell.Result uidResult = RootShell.cmd("stat -c %u /data/data/" + packageName).exec();
         String uid = "";
         if (uidResult.isSuccess() && !uidResult.getOut().isEmpty()) {
             uid = uidResult.getOut().get(0).trim();
             Log.i(TAG, "Package UID: " + uid);
             
             // Set ownership of files directory to match app
-            Shell.Result chownDirResult = Shell.cmd("chown " + uid + ":" + uid + " \"" + filesDir + "\"").exec();
+            Shell.Result chownDirResult = RootShell.cmd("chown " + uid + ":" + uid + " \"" + filesDir + "\"").exec();
             if (!chownDirResult.isSuccess()) {
                 Log.e(TAG, "Failed to set directory ownership: " + String.join("\n", chownDirResult.getErr()));
             }
             
             // Set SELinux context for the directory
-            Shell.cmd("restorecon -F " + quote(filesDir)).exec();
+            RootShell.cmd("restorecon -F " + quote(filesDir)).exec();
         } else {
             Log.e(TAG, "Failed to get package UID");
         }
         
-        Shell.Result labelResult = Shell.cmd("ls -Zd " + quote(filesDir)).exec();
+        Shell.Result labelResult = RootShell.cmd("ls -Zd " + quote(filesDir)).exec();
         String label = labelResult.isSuccess() && !labelResult.getOut().isEmpty()
             ? labelResult.getOut().get(0).trim().split("\\s+")[0] : "";
         if (!label.matches("[a-zA-Z0-9_:,]+")) {
@@ -594,11 +588,11 @@ public class ConfigManager {
             String destPath = filesDir + "/" + soFile.name;
             
             // Check if source file exists
-            Shell.Result checkResult = Shell.cmd("test -f \"" + soFile.storedPath + "\" && echo 'exists'").exec();
+            Shell.Result checkResult = RootShell.cmd("test -f \"" + soFile.storedPath + "\" && echo 'exists'").exec();
             if (!checkResult.isSuccess() || checkResult.getOut().isEmpty()) {
                 Log.e(TAG, "Source SO file not found: " + soFile.storedPath);
                 // Log more details about the missing file
-                Shell.Result lsResult = Shell.cmd("ls -la \"" + SO_STORAGE_DIR + "\"").exec();
+                Shell.Result lsResult = RootShell.cmd("ls -la \"" + SO_STORAGE_DIR + "\"").exec();
                 Log.e(TAG, "Contents of SO storage dir: " + String.join("\n", lsResult.getOut()));
                 return false;
             }
@@ -606,30 +600,30 @@ public class ConfigManager {
             Log.i(TAG, "Copying: " + soFile.storedPath + " to " + destPath);
             
             // First, ensure the destination directory exists and has proper permissions
-            Shell.cmd("mkdir -p \"" + filesDir + "\"").exec();
-            Shell.cmd("chmod 755 \"" + filesDir + "\"").exec();
+            RootShell.cmd("mkdir -p \"" + filesDir + "\"").exec();
+            RootShell.cmd("chmod 755 \"" + filesDir + "\"").exec();
             
             // Publish a new inode atomically. Truncating a mapped library can cause SIGBUS
             // in an already-running target process, even after dlopen succeeded.
             String stagedPath = destPath + "." + java.util.UUID.randomUUID() + ".tmp";
             String owner = uid.matches("[0-9]+") ? " && chown " + uid + ":" + uid + " " + quote(stagedPath) : "";
-            Shell.Result result = Shell.cmd("cp " + quote(soFile.storedPath) + " " + quote(stagedPath)
+            Shell.Result result = RootShell.cmd("cp " + quote(soFile.storedPath) + " " + quote(stagedPath)
                 + " && chmod 755 " + quote(stagedPath) + owner
                 + " && chcon " + quote(label) + " " + quote(stagedPath)
                 + " && mv -f " + quote(stagedPath) + " " + quote(destPath)).exec();
             if (!result.isSuccess()) {
-                Shell.cmd("rm -f " + quote(stagedPath)).exec();
+                RootShell.cmd("rm -f " + quote(stagedPath)).exec();
                 Log.e(TAG, "Atomic SO deployment failed: " + String.join("\n", result.getErr()));
                 return false;
             }
 
             // Verify the file was copied with correct permissions
-            Shell.Result verifyResult = Shell.cmd("ls -laZ \"" + destPath + "\" 2>/dev/null").exec();
+            Shell.Result verifyResult = RootShell.cmd("ls -laZ \"" + destPath + "\" 2>/dev/null").exec();
             if (verifyResult.isSuccess() && !verifyResult.getOut().isEmpty()) {
                 Log.i(TAG, "Successfully deployed: " + String.join(" ", verifyResult.getOut()));
             } else {
                 // Fallback verification without SELinux context
-                verifyResult = Shell.cmd("ls -la \"" + destPath + "\" 2>/dev/null").exec();
+                verifyResult = RootShell.cmd("ls -la \"" + destPath + "\" 2>/dev/null").exec();
                 if (verifyResult.isSuccess() && !verifyResult.getOut().isEmpty()) {
                     Log.i(TAG, "Successfully deployed: " + String.join(" ", verifyResult.getOut()));
                 } else {
@@ -657,7 +651,7 @@ public class ConfigManager {
         }
         
         // First check if we have root access
-        if (!Shell.getShell().isRoot()) {
+        if (!RootShell.get().isRoot()) {
             Log.e(TAG, "No root access available!");
             return;
         }
@@ -672,19 +666,19 @@ public class ConfigManager {
             Log.i(TAG, "Cleaning up: " + filePath);
             
             // Check if file exists before trying to delete
-            Shell.Result checkResult = Shell.cmd("test -f \"" + filePath + "\" && echo 'exists'").exec();
+            Shell.Result checkResult = RootShell.cmd("test -f \"" + filePath + "\" && echo 'exists'").exec();
             if (checkResult.isSuccess() && !checkResult.getOut().isEmpty()) {
                 // Try to remove the file
-                Shell.Result result = Shell.cmd("rm -f \"" + filePath + "\"").exec();
+                Shell.Result result = RootShell.cmd("rm -f \"" + filePath + "\"").exec();
                 
                 // Verify deletion
-                Shell.Result verifyResult = Shell.cmd("test -f \"" + filePath + "\" && echo 'still_exists'").exec();
+                Shell.Result verifyResult = RootShell.cmd("test -f \"" + filePath + "\" && echo 'still_exists'").exec();
                 if (!verifyResult.isSuccess() || verifyResult.getOut().isEmpty()) {
                     Log.i(TAG, "Successfully deleted SO file: " + filePath);
                 } else {
                     Log.e(TAG, "Failed to delete SO file: " + filePath);
                     // Try with su -c
-                    Shell.cmd("su -c 'rm -f \"" + filePath + "\"'").exec();
+                    RootShell.cmd("su -c 'rm -f \"" + filePath + "\"'").exec();
                 }
             } else {
                 Log.w(TAG, "SO file not found for cleanup: " + filePath);
@@ -697,14 +691,14 @@ public class ConfigManager {
             String gadgetConfigName = gadgetToUse.gadgetName.replace(".so", ".config.so");
             String configPath = filesDir + "/" + gadgetConfigName;
             
-            Shell.Result checkConfigResult = Shell.cmd("test -f \"" + configPath + "\" && echo 'exists'").exec();
+            Shell.Result checkConfigResult = RootShell.cmd("test -f \"" + configPath + "\" && echo 'exists'").exec();
             if (checkConfigResult.isSuccess() && !checkConfigResult.getOut().isEmpty()) {
-                Shell.Result deleteResult = Shell.cmd("rm -f \"" + configPath + "\"").exec();
+                Shell.Result deleteResult = RootShell.cmd("rm -f \"" + configPath + "\"").exec();
                 if (deleteResult.isSuccess()) {
                     Log.i(TAG, "Deleted gadget config: " + configPath);
                 } else {
                     // Try with su -c
-                    Shell.cmd("su -c 'rm -f \"" + configPath + "\"'").exec();
+                    RootShell.cmd("su -c 'rm -f \"" + configPath + "\"'").exec();
                 }
             }
         }

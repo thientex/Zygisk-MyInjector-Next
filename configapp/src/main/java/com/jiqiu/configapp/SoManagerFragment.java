@@ -44,8 +44,7 @@ public class SoManagerFragment extends Fragment {
         super.onCreate(savedInstanceState);
         
         configManager = new ConfigManager(requireContext());
-        // Ensure module directories exist
-        configManager.ensureModuleDirectories();
+
         
         // Initialize file picker
         filePickerLauncher = registerForActivityResult(
@@ -93,6 +92,8 @@ public class SoManagerFragment extends Fragment {
         adapter = new SoListAdapter();
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(adapter);
+        recyclerView.setHasFixedSize(true);
+        recyclerView.setItemAnimator(null);
         
         adapter.setOnSoFileActionListener(this::showDeleteConfirmation);
         
@@ -103,10 +104,7 @@ public class SoManagerFragment extends Fragment {
         if (!configManager.isRootAvailable()) {
             Toast.makeText(getContext(), Localized.text(R.string.text_root_access_is_required), Toast.LENGTH_LONG).show();
         } else {
-            configManager.ensureModuleDirectories();
-            // Also ensure common directories exist
-            Shell.cmd("mkdir -p /data/local/tmp").exec();
-            Shell.cmd("chmod 777 /data/local/tmp").exec();
+
             loadSoFiles();
         }
     }

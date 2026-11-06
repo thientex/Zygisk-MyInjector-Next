@@ -67,7 +67,7 @@ public class FileUtils {
             }
             
             // Check if the path exists
-            Shell.Result result = Shell.cmd("test -f \"" + path + "\" && echo 'exists'").exec();
+            Shell.Result result = RootShell.cmd("test -f \"" + path + "\" && echo 'exists'").exec();
             if (result.isSuccess() && !result.getOut().isEmpty()) {
                 return path;
             }
@@ -117,7 +117,7 @@ public class FileUtils {
             
             // First copy to /data/local/tmp as a temporary location
             String tempTargetPath = "/data/local/tmp/" + fileName;
-            Shell.Result result = Shell.cmd(
+            Shell.Result result = RootShell.cmd(
                 "cp \"" + tempFile.getAbsolutePath() + "\" \"" + tempTargetPath + "\"",
                 "chmod 644 \"" + tempTargetPath + "\""
             ).exec();

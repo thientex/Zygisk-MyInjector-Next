@@ -21,49 +21,64 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
     private SettingsFragment settingsFragment;
     private SoManagerFragment soManagerFragment;
 
+    private android.widget.ProgressBar checking;
+    private androidx.appcompat.app.AlertDialog rootDialog;
+    private boolean rootGranted;
+    private boolean checkingRoot;
+    private boolean recheckOnResume;
+    private int selectedTab = R.id.navigation_so_manager;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+        // Restored fragments must not run root commands before a new su session exists.
+        super.onCreate(RootShell.ready() ? savedInstanceState : null);
+        if (savedInstanceState != null) selectedTab = savedInstanceState.getInt("selected_tab", R.id.navigation_so_manager);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
-
-        initViews();
-        bottomNavigationView.setVisibility(android.view.View.GONE);
-        android.widget.ProgressBar checking = new android.widget.ProgressBar(this);
+        bottomNavigationView = findViewById(R.id.bottom_navigation);
+        ScreenInsets.install(findViewById(R.id.main), bottomNavigationView);
+        checking = new android.widget.ProgressBar(this);
         checking.setContentDescription(getString(R.string.root_check));
-        findViewById(R.id.nav_host_fragment).setVisibility(android.view.View.GONE);
-        androidx.constraintlayout.widget.ConstraintLayout.LayoutParams progressParams =
-            new androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(96, 96);
-        progressParams.topToTop = progressParams.bottomToBottom = 0;
-        progressParams.startToStart = progressParams.endToEnd = 0;
-        ((android.view.ViewGroup) findViewById(R.id.main)).addView(checking, progressParams);
-        RootAccess.request(granted -> {
+        androidx.constraintlayout.widget.ConstraintLayout.LayoutParams params =
+            new androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(
+                (int) (40 * getResources().getDisplayMetrics().density),
+                (int) (40 * getResources().getDisplayMetrics().density));
+        params.topToTop = params.bottomToBottom = 0;
+        params.startToStart = params.endToEnd = 0;
+        ((android.view.ViewGroup) findViewById(R.id.main)).addView(checking, params);
+        startRootCheck(false);
+    }
+
+    private void startRootCheck(boolean fresh) {
+        if (checkingRoot || rootGranted || isFinishing() || isDestroyed()) return;
+        checkingRoot = true;
+        if (rootDialog != null) { rootDialog.dismiss(); rootDialog = null; }
+        checking.setVisibility(android.view.View.VISIBLE);
+        bottomNavigationView.setVisibility(android.view.View.INVISIBLE);
+        findViewById(R.id.nav_host_fragment).setVisibility(android.view.View.INVISIBLE);
+        RootAccess.request(fresh, granted -> {
             if (isFinishing() || isDestroyed()) return;
+            checkingRoot = false;
             pendingRootUi = () -> {
-                ((android.view.ViewGroup) findViewById(R.id.main)).removeView(checking);
+                checking.setVisibility(android.view.View.GONE);
                 if (!granted) {
-                    new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                        .setTitle(R.string.root_required).setMessage(R.string.root_message)
+                    rootDialog = new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                        .setTitle(R.string.root_required).setMessage(getString(R.string.root_message)
+                            + "\n\n" + RootShell.failure())
                         .setCancelable(false)
-                        .setNeutralButton(R.string.root_retry, (dialog, which) -> recreate())
+                        .setNeutralButton(R.string.root_retry, (dialog, which) -> startRootCheck(true))
                         .setPositiveButton(R.string.close, (dialog, which) -> finishAndRemoveTask())
                         .show();
                     return;
                 }
+                rootGranted = true;
                 findViewById(R.id.nav_host_fragment).setVisibility(android.view.View.VISIBLE);
                 bottomNavigationView.setVisibility(android.view.View.VISIBLE);
                 appListFragment = (AppListFragment) getSupportFragmentManager().findFragmentByTag("apps");
                 soManagerFragment = (SoManagerFragment) getSupportFragmentManager().findFragmentByTag("library");
                 settingsFragment = (SettingsFragment) getSupportFragmentManager().findFragmentByTag("settings");
                 setupBottomNavigation();
-                int selected = (savedInstanceState == null ? R.id.navigation_so_manager
-                    : savedInstanceState.getInt("selected_tab", R.id.navigation_so_manager));
-                bottomNavigationView.setSelectedItemId(selected);
+                bottomNavigationView.setSelectedItemId(selectedTab);
             };
             renderRootResult();
         });
@@ -71,14 +86,24 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
-        outState.putInt("selected_tab", bottomNavigationView.getSelectedItemId());
+        outState.putInt("selected_tab", rootGranted ? bottomNavigationView.getSelectedItemId() : selectedTab);
         super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (!rootGranted) recheckOnResume = true;
     }
 
     @Override
     protected void onPostResume() {
         super.onPostResume();
         renderRootResult();
+        if (recheckOnResume && !rootGranted && !checkingRoot) {
+            recheckOnResume = false;
+            startRootCheck(true);
+        }
     }
 
     private void renderRootResult() {
@@ -87,10 +112,6 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
             pendingRootUi = null;
             update.run();
         }
-    }
-
-    private void initViews() {
-        bottomNavigationView = findViewById(R.id.bottom_navigation);
     }
 
     private void setupBottomNavigation() {

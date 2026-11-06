@@ -37,7 +37,7 @@ public class ConfigApplication extends Application {
         packages.addAction(android.content.Intent.ACTION_PACKAGE_CHANGED);
         packages.addDataScheme("package");
         android.content.BroadcastReceiver catalogReceiver = new android.content.BroadcastReceiver() {
-            @Override public void onReceive(Context context, android.content.Intent intent) { AppCatalog.clear(); }
+            @Override public void onReceive(Context context, android.content.Intent intent) { AppCatalog.clear(); AppIconLoader.clear(); }
         };
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(catalogReceiver, packages, Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(catalogReceiver, packages);

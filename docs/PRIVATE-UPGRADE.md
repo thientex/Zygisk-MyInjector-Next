@@ -1,6 +1,17 @@
-# Private upgrade 1.4.1
+# Private upgrade 1.4.2
 
 This working tree is based on jiqiu2022/Zygisk-MyInjector. The original MIT license and attribution are retained. Nothing has been pushed to GitHub.
+
+## Root, layout and scrolling changes in 1.4.2
+
+- The app now owns a standalone `su` shell built with libsu's public Builder API. Retrying closes the old shell and starts a new `su` process, bypassing libsu's process-global main-shell cache and failed-initialization guard. Every root command in the app uses the exact authorized session and explicitly captures stdout/stderr. No reflection is used in production.
+- Returning from the root manager automatically retries while the app is awaiting authorization. The retry button starts the check directly, without recreating the activity. Restored fragments wait for an authorized shell.
+- A real-libsu host integration test runs a child-process permission policy through denial, grant, new-session commands, explicit retry and a deliberately poisoned libsu global initialization guard. The policy/UID output is controlled; this is not a claim of physical SukiSU testing.
+- The root layout consumes system bar insets once. Material navigation no longer adds the same bottom space a second time. The bar wraps content with a font-scale-aware minimum height. Logo and title use an explicit 16dp gap.
+- Robolectric API 34 measures the actual Android layout with Vietnamese resources, a 48px bottom system bar, normal and 1.5x fonts, and night mode. It checks icon/label bounds, label ellipsis and logo spacing.
+- Removed synchronous root directory setup from SO screen creation. Icon requests are deduplicated on two workers with a bounded shared cache and weak view targets. Repeated unchanged filters do not notify/rebind the list. Search is debounced, sorting occurs only when required, and list change animations/card shadows are reduced.
+- No frame-time benchmark or physical-device UI test was performed. A file browser directory listing still uses the upstream synchronous implementation; it is not covered by the scrolling performance improvements above.
+- Jetifier is disabled: runtime dependencies are already AndroidX. Robolectric is test-only. The four obsolete fake-session tests were replaced with real-libsu session integration tests.
 
 ## Root detection fix in 1.4.1
 

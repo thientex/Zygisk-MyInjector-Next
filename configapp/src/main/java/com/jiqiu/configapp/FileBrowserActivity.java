@@ -41,6 +41,11 @@ public class FileBrowserActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (!RootShell.ready()) {
+            startActivity(new android.content.Intent(this, MainActivity.class));
+            finish();
+            return;
+        }
         setContentView(R.layout.activity_file_browser);
         
         Toolbar toolbar = findViewById(R.id.toolbar);
@@ -68,7 +73,7 @@ public class FileBrowserActivity extends AppCompatActivity {
         }
         
         // Check if we have root access
-        if (!Shell.getShell().isRoot()) {
+        if (!RootShell.get().isRoot()) {
             Toast.makeText(this, Localized.text(R.string.text_root_access_is_required_to_browse_files), Toast.LENGTH_LONG).show();
             Log.e(TAG, "No root access");
         }
@@ -89,7 +94,7 @@ public class FileBrowserActivity extends AppCompatActivity {
         
         // List files using root
         Log.d(TAG, "Loading files from: " + currentPath);
-        Shell.Result result = Shell.cmd("ls -la " + currentPath + " 2>/dev/null").exec();
+        Shell.Result result = RootShell.cmd("ls -la " + currentPath + " 2>/dev/null").exec();
         Log.d(TAG, "ls command success: " + result.isSuccess() + ", output lines: " + result.getOut().size());
         
         if (result.isSuccess()) {
@@ -117,7 +122,7 @@ public class FileBrowserActivity extends AppCompatActivity {
                     // Simple format, just the filename
                     name = line.trim();
                     // Check if it's a directory by trying to list it
-                    Shell.Result dirCheck = Shell.cmd("test -d \"" + currentPath + "/" + name + "\" && echo 'dir'").exec();
+                    Shell.Result dirCheck = RootShell.cmd("test -d \"" + currentPath + "/" + name + "\" && echo 'dir'").exec();
                     isDirectory = dirCheck.isSuccess() && !dirCheck.getOut().isEmpty();
                 }
                 
@@ -132,11 +137,11 @@ public class FileBrowserActivity extends AppCompatActivity {
             }
         } else {
             // If ls fails, try a simpler approach
-            Shell.Result simpleResult = Shell.cmd("cd " + currentPath + " && for f in *; do echo \"$f\"; done").exec();
+            Shell.Result simpleResult = RootShell.cmd("cd " + currentPath + " && for f in *; do echo \"$f\"; done").exec();
             if (simpleResult.isSuccess()) {
                 for (String name : simpleResult.getOut()) {
                     if (!name.trim().isEmpty() && !"*".equals(name)) {
-                        Shell.Result dirCheck = Shell.cmd("test -d \"" + currentPath + "/" + name + "\" && echo 'dir'").exec();
+                        Shell.Result dirCheck = RootShell.cmd("test -d \"" + currentPath + "/" + name + "\" && echo 'dir'").exec();
                         boolean isDirectory = dirCheck.isSuccess() && !dirCheck.getOut().isEmpty();
                         
                         // Filter files by extension
@@ -153,10 +158,10 @@ public class FileBrowserActivity extends AppCompatActivity {
         // If still no items and not root, add some common directories to try
         if (items.size() <= 1 && "/data/local/tmp".equals(currentPath)) {
             // Try to create a test file to verify access
-            Shell.cmd("touch /data/local/tmp/test_access.tmp && rm /data/local/tmp/test_access.tmp").exec();
+            RootShell.cmd("touch /data/local/tmp/test_access.tmp && rm /data/local/tmp/test_access.tmp").exec();
             
             // Add any .so files we can find
-            Shell.Result findResult = Shell.cmd("find " + currentPath + " -maxdepth 1 -name '*.so' -type f 2>/dev/null").exec();
+            Shell.Result findResult = RootShell.cmd("find " + currentPath + " -maxdepth 1 -name '*.so' -type f 2>/dev/null").exec();
             if (findResult.isSuccess()) {
                 for (String path : findResult.getOut()) {
                     if (!path.trim().isEmpty()) {
