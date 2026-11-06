@@ -72,7 +72,7 @@ public class GadgetConfigDialog extends DialogFragment {
     
     public static GadgetConfigDialog newInstance(ConfigManager.GadgetConfig config) {
         GadgetConfigDialog dialog = new GadgetConfigDialog();
-        dialog.config = config != null ? config : new ConfigManager.GadgetConfig();
+        dialog.config = config != null ? new com.google.gson.Gson().fromJson(new com.google.gson.Gson().toJson(config), ConfigManager.GadgetConfig.class) : new ConfigManager.GadgetConfig();
         return dialog;
     }
     
@@ -82,7 +82,7 @@ public class GadgetConfigDialog extends DialogFragment {
         // The actual dialog will be created in show() method
         this.savedContext = context;
         this.customTitle = title;
-        this.config = config != null ? config : new ConfigManager.GadgetConfig();
+        this.config = config != null ? new com.google.gson.Gson().fromJson(new com.google.gson.Gson().toJson(config), ConfigManager.GadgetConfig.class) : new ConfigManager.GadgetConfig();
         this.listener = listener;
     }
     

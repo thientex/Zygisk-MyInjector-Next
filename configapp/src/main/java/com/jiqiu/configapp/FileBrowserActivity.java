@@ -46,6 +46,7 @@ public class FileBrowserActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        getSupportActionBar().setHomeAsUpIndicator(R.drawable.ic_chevron_left);
         getSupportActionBar().setTitle(Localized.text(R.string.text_choose_an_so_file));
         
         currentPathText = findViewById(R.id.currentPath);
@@ -237,10 +238,10 @@ public class FileBrowserActivity extends AppCompatActivity {
                 name.setText(item.name);
                 
                 if (item.isDirectory) {
-                    icon.setImageResource(android.R.drawable.ic_menu_agenda);
+                    icon.setImageResource(R.drawable.ic_folder);
                     info.setText(Localized.text(R.string.text_folder));
                 } else {
-                    icon.setImageResource(android.R.drawable.ic_menu_save);
+                    icon.setImageResource(R.drawable.ic_file_code);
                     info.setText(Localized.text(R.string.text_so_file));
                 }
                 

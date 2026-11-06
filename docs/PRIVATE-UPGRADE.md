@@ -1,8 +1,19 @@
-# Private upgrade 1.3.0
+# Private upgrade 1.4.0
 
 This working tree is based on jiqiu2022/Zygisk-MyInjector. The original MIT license and attribution are retained. Nothing has been pushed to GitHub.
 
-## Changes
+## Changes in 1.4.0
+
+- Bundled Fira Sans Regular/Medium/SemiBold/Bold from Google Fonts with its OFL license, and Lucide 0.468.0 vector icons with their license. Both licenses are included in the APK assets and source tree.
+- A periwinkle header, rounded content pane, floating navigation, icon tiles and spacious settings cards based on the supplied UI reference. Light/dark/system appearance is saved in Settings. Framework spinner rows also use Fira Sans.
+- New launches open the SO library; activity recreation for theme/language preserves the current tab.
+- Root checking closes stale/non-root libsu sessions, probes `id -u`, discards denied sessions immediately and permits retry without clearing app data.
+- App dialog edits are staged, including nested Gadget changes. Cancel does not save them. Save publishes selected libraries and config once, then automatically force-stops only the affected target app, as explicitly requested, with a reopen notification. No-change saves do not restart it.
+- Same-name library imports now ask to replace the file instead of silently ignoring it. Enabled consumers receive the new file and are closed for their next launch. Files remain atomically replaced instead of truncating mapped inodes.
+- Native configuration is reloaded for each new process specialization. Android cannot replace an existing in-process mapping merely because its activity was closed; restarting the target process is necessary. The user no longer needs to manually Force stop it after a successful apply.
+- Apply failures are reported. The target is not closed after a deployment or config publication failure. File/config commits are individually atomic; a failure midway through a multi-file deployment can require retry and is not a cross-file rollback transaction.
+
+## Changes inherited from 1.3.0
 
 - English default resources, Vietnamese and Chinese translations, with a persistent language picker in Settings. Runtime Java dialog strings also use resources.
 - Retained tab fragments preserve search text and scroll position. Application labels are cached in memory and on disk, invalidated by package changes and locale. Icons load on two background workers and use a bounded cache; recycled rows reject stale icon results. Initial package discovery and root checks still take time, so a cold launch is not guaranteed to be instantaneous.

@@ -116,4 +116,25 @@
     <string name="language_english">English</string>
     <string name="language_vietnamese">Tiếng Việt</string>
     <string name="language_chinese">中文</string>
+    <string name="workspace_subtitle">"Your libraries. Your workspace."</string>
+    <string name="library_subtitle">"Keep your SO files together, ready to use."</string>
+    <string name="library_count">"%1$d files in your library"</string>
+    <string name="appearance">"Appearance"</string>
+    <string name="appearance_hint">"Make this space yours."</string>
+    <string name="appearance_system">"Follow system"</string>
+    <string name="appearance_light">"Light"</string>
+    <string name="appearance_dark">"Dark"</string>
+    <string name="apply_and_save">"Save &amp; apply"</string>
+    <string name="apply_notice">"Saving changes closes the target app so the new SO files load the next time you open it."</string>
+    <string name="apply_done">"Configuration applied. Open the target app again."</string>
+    <string name="apply_saved">"Configuration saved."</string>
+    <string name="apply_failed">"Could not apply changes. Check root access and the SO files."</string>
+    <string name="apply_stop_failed">"Files saved, but the target app could not be closed. Restart its process before testing."</string>
+    <string name="so_replace_title">"Replace SO file?"</string>
+    <string name="so_replace_message">"A file with this name is already in the library. Replace it and close enabled apps that use it?"</string>
+    <string name="so_replaced">"SO file updated. Reopen any affected app."</string>
+    <string name="root_retry">"Check again"</string>
+    <string name="root_ready">"Root access granted"</string>
+    <string name="personalization">"Personalization"</string>
+    <string name="font_credit">"Fira Sans · Lucide icons"</string>
 </resources>

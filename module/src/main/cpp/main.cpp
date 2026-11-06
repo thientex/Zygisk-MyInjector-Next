@@ -80,7 +80,7 @@ private:
     
     void preSpecialize(const char *package_name, const char *app_data_dir) {
         // Read configuration
-        Config::readConfig();
+        Config::reloadConfig();
         
         // Check if this app is enabled for injection
         if (Config::isAppEnabled(package_name)) {

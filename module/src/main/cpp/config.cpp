@@ -224,6 +224,13 @@ namespace Config {
         return g_config;
     }
     
+    void reloadConfig() {
+        for (auto &entry : g_config.perAppConfig) delete entry.second.gadgetConfig;
+        g_config = ModuleConfig{};
+        g_configLoaded = false;
+        readConfig();
+    }
+
     bool isAppEnabled(const std::string& packageName) {
         if (!g_configLoaded) {
             readConfig();

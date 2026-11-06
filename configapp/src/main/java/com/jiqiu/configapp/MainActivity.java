@@ -42,14 +42,15 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
         progressParams.topToTop = progressParams.bottomToBottom = 0;
         progressParams.startToStart = progressParams.endToEnd = 0;
         ((android.view.ViewGroup) findViewById(R.id.main)).addView(checking, progressParams);
-        com.topjohnwu.superuser.Shell.getShell(shell -> {
+        RootAccess.request(granted -> {
             if (isFinishing() || isDestroyed()) return;
             pendingRootUi = () -> {
                 ((android.view.ViewGroup) findViewById(R.id.main)).removeView(checking);
-                if (!shell.isRoot()) {
+                if (!granted) {
                     new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
                         .setTitle(R.string.root_required).setMessage(R.string.root_message)
                         .setCancelable(false)
+                        .setNeutralButton(R.string.root_retry, (dialog, which) -> recreate())
                         .setPositiveButton(R.string.close, (dialog, which) -> finishAndRemoveTask())
                         .show();
                     return;
@@ -60,11 +61,18 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
                 soManagerFragment = (SoManagerFragment) getSupportFragmentManager().findFragmentByTag("library");
                 settingsFragment = (SettingsFragment) getSupportFragmentManager().findFragmentByTag("settings");
                 setupBottomNavigation();
-                int selected = getPreferences(MODE_PRIVATE).getInt("selected_tab", R.id.navigation_apps);
+                int selected = (savedInstanceState == null ? R.id.navigation_so_manager
+                    : savedInstanceState.getInt("selected_tab", R.id.navigation_so_manager));
                 bottomNavigationView.setSelectedItemId(selected);
             };
             renderRootResult();
         });
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        outState.putInt("selected_tab", bottomNavigationView.getSelectedItemId());
+        super.onSaveInstanceState(outState);
     }
 
     @Override
@@ -88,7 +96,7 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
     private void setupBottomNavigation() {
         bottomNavigationView.setOnItemSelectedListener(item -> {
             int itemId = item.getItemId();
-            getPreferences(MODE_PRIVATE).edit().putInt("selected_tab", itemId).apply();
+
             if (itemId == R.id.navigation_apps) {
                 showAppListFragment();
                 return true;

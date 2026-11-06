@@ -8,8 +8,8 @@ NC='\033[0m' # No Color
 
 # 模块信息
 MODULE_ID="zygisk-myinjector"
-MODULE_VERSION="1.3.0-private"
-MODULE_VERSION_CODE="130"
+MODULE_VERSION="1.4.0-private"
+MODULE_VERSION_CODE="140"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  Zygisk MyInjector 构建脚本${NC}"
@@ -70,6 +70,11 @@ if [ -f "module/service.sh" ]; then
     echo -e "  ${GREEN}✓ 复制 service.sh${NC}"
 else
     echo -e "  ${RED}✗ 未找到 service.sh${NC}"
+fi
+
+if [ -f "template/magisk_module/customize.sh" ]; then
+    cp template/magisk_module/customize.sh "$TEMP_DIR/"
+    chmod 755 "$TEMP_DIR/customize.sh"
 fi
 
 # 创建 zygisk 目录并复制 so 文件

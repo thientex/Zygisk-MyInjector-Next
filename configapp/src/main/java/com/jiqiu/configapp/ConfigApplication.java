@@ -22,6 +22,8 @@ public class ConfigApplication extends Application {
     public void onCreate() {
         super.onCreate();
         Localized.application = this;
+        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
+            getSharedPreferences("MyInjectorSettings", MODE_PRIVATE).getInt("theme", -1));
         androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
             androidx.core.os.LocaleListCompat.forLanguageTags(
                 getSharedPreferences("MyInjectorSettings", MODE_PRIVATE).getString("language", "")));

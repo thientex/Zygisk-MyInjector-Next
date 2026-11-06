@@ -36,34 +36,34 @@ import java.util.List;
  * 应用列表Fragment
  */
 public class AppListFragment extends Fragment implements AppListAdapter.OnAppToggleListener, AppListAdapter.OnAppClickListener {
-    
-    private static final java.util.concurrent.ExecutorService LOADER = java.util.concurrent.Executors.newSingleThreadExecutor();
+
+    private static final java.util.concurrent.ExecutorService LOADER = ConfigManager.IO;
     private RecyclerView recyclerView;
     private AppListAdapter adapter;
     private TextInputEditText searchEditText;
     private ProgressBar progressBar;
-    
+
     private List<AppInfo> allApps;
     private boolean hideSystemApps = false;
     private ConfigManager configManager;
-    
+
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, 
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                            @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_app_list, container, false);
     }
-    
+
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        
+
         initViews(view);
         setupRecyclerView();
         setupSearchView();
         loadApps();
     }
-    
+
     @Override
     public void onHiddenChanged(boolean hidden) {
         super.onHiddenChanged(hidden);
@@ -81,7 +81,7 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
         searchEditText = view.findViewById(R.id.search_edit_text);
         progressBar = view.findViewById(R.id.progress_bar);
     }
-    
+
     private void setupRecyclerView() {
         adapter = new AppListAdapter();
         adapter.setOnAppToggleListener(this);
@@ -89,26 +89,26 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(adapter);
     }
-    
+
     private void setupSearchView() {
         searchEditText.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            
+
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 filterApps(s.toString());
             }
-            
+
             @Override
             public void afterTextChanged(Editable s) {}
         });
     }
-    
+
     private void loadApps() {
         progressBar.setVisibility(View.VISIBLE);
         recyclerView.setVisibility(View.GONE);
-        
+
         hideSystemApps = requireContext().getSharedPreferences("MyInjectorSettings", 0)
             .getBoolean("hide_system_apps", false);
         final android.content.Context context = requireContext().getApplicationContext();
@@ -131,34 +131,44 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
             });
         });
     }
-    
+
     private void filterApps(String query) {
         if (adapter != null) {
             adapter.filterApps(query, hideSystemApps);
         }
     }
-    
+
     public void setHideSystemApps(boolean hideSystemApps) {
         this.hideSystemApps = hideSystemApps;
         if (searchEditText != null) filterApps(searchEditText.getText().toString());
     }
-    
+
     @Override
     public void onAppToggle(AppInfo appInfo, boolean isEnabled) {
-        // 保存应用的启用状态到配置文件
-        configManager.setAppEnabled(appInfo.getPackageName(), isEnabled);
-        android.util.Log.d("AppListFragment", 
-            "App " + appInfo.getAppName() + " toggle: " + isEnabled);
+        android.content.Context context = requireContext().getApplicationContext();
+        LOADER.execute(() -> {
+            ConfigManager.ApplyResult result = configManager.setAppEnabled(appInfo.getPackageName(), isEnabled);
+            new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                if (result == ConfigManager.ApplyResult.FAILED) {
+                    appInfo.setEnabled(!isEnabled);
+                    if (getView() != null) filterApps(searchEditText.getText().toString());
+                }
+                int message = result == ConfigManager.ApplyResult.FAILED ? R.string.apply_failed
+                    : result == ConfigManager.ApplyResult.STOP_FAILED ? R.string.apply_stop_failed
+                    : result == ConfigManager.ApplyResult.RESTARTED ? R.string.apply_done : R.string.apply_saved;
+                android.widget.Toast.makeText(context, Localized.text(message), android.widget.Toast.LENGTH_LONG).show();
+            });
+        });
     }
-    
+
     @Override
     public void onAppClick(AppInfo appInfo) {
         showAppConfigDialog(appInfo);
     }
-    
+
     private void showAppConfigDialog(AppInfo appInfo) {
         View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_app_config, null);
-        
+
         // Set app info
         ImageView appIcon = dialogView.findViewById(R.id.appIcon);
         TextView appName = dialogView.findViewById(R.id.appName);
@@ -175,7 +185,7 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
         RadioButton radioUseCustomGadget = dialogView.findViewById(R.id.radioUseCustomGadget);
         TextView tvGlobalGadgetInfo = dialogView.findViewById(R.id.tvGlobalGadgetInfo);
         com.google.android.material.button.MaterialButton btnConfigureGadget = dialogView.findViewById(R.id.btnConfigureGadget);
-        
+
         try {
             appIcon.setImageDrawable(requireContext().getPackageManager().getApplicationIcon(appInfo.getPackageName()));
         } catch (PackageManager.NameNotFoundException ignored) {
@@ -183,7 +193,7 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
         }
         appName.setText(appInfo.getAppName());
         packageName.setText(appInfo.getPackageName());
-        
+
         // Load current config
         String injectionMethod = configManager.getAppInjectionMethod(appInfo.getPackageName());
         if ("custom_linker".equals(injectionMethod)) {
@@ -193,12 +203,13 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
         } else {
             radioStandardInjection.setChecked(true);
         }
-        
+
         // Load gadget config
         boolean useGlobalGadget = configManager.getAppUseGlobalGadget(appInfo.getPackageName());
         ConfigManager.GadgetConfig appSpecificGadget = configManager.getAppGadgetConfig(appInfo.getPackageName());
         ConfigManager.GadgetConfig globalGadget = configManager.getGlobalGadgetConfig();
-        
+        final ConfigManager.GadgetConfig[] stagedGadget = {useGlobalGadget ? null : appSpecificGadget};
+
         // Update global gadget info
         if (globalGadget != null) {
             String info = Localized.text(R.string.text_global) + globalGadget.gadgetName;
@@ -209,7 +220,7 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
         } else {
             tvGlobalGadgetInfo.setText(Localized.text(R.string.text_global_gadget_is_not_configured));
         }
-        
+
         // Set initial radio selection
         if (!useGlobalGadget && appSpecificGadget != null) {
             radioUseCustomGadget.setChecked(true);
@@ -222,67 +233,63 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
             radioNoGadget.setChecked(true);
             btnConfigureGadget.setVisibility(View.GONE);
         }
-        
+
         // Setup gadget radio group listener
         gadgetConfigGroup.setOnCheckedChangeListener((group, checkedId) -> {
             if (checkedId == R.id.radioNoGadget) {
                 btnConfigureGadget.setVisibility(View.GONE);
-                configManager.setAppUseGlobalGadget(appInfo.getPackageName(), false);
-                configManager.setAppGadgetConfig(appInfo.getPackageName(), null);
+
             } else if (checkedId == R.id.radioUseGlobalGadget) {
                 btnConfigureGadget.setVisibility(View.GONE);
-                configManager.setAppUseGlobalGadget(appInfo.getPackageName(), true);
-                configManager.setAppGadgetConfig(appInfo.getPackageName(), null);
+
             } else if (checkedId == R.id.radioUseCustomGadget) {
                 btnConfigureGadget.setVisibility(View.VISIBLE);
                 btnConfigureGadget.setEnabled(true);
-                configManager.setAppUseGlobalGadget(appInfo.getPackageName(), false);
+
             }
         });
-        
+
         // Configure button listener
         btnConfigureGadget.setOnClickListener(v -> {
-            ConfigManager.GadgetConfig currentConfig = null;
-            if (!useGlobalGadget) {
-                currentConfig = configManager.getAppGadgetConfig(appInfo.getPackageName());
-            }
+            ConfigManager.GadgetConfig currentConfig = stagedGadget[0];
             if (currentConfig == null) {
                 currentConfig = new ConfigManager.GadgetConfig();
             }
-            
+
             GadgetConfigDialog dialog = new GadgetConfigDialog(
                 getContext(),
                 Localized.text(R.string.text_configure) + appInfo.getAppName() + Localized.text(R.string.text_gadget),
                 currentConfig,
                 config -> {
-                    configManager.setAppUseGlobalGadget(appInfo.getPackageName(), false);
-                    configManager.setAppGadgetConfig(appInfo.getPackageName(), config);
+
+                    stagedGadget[0] = config;
                 }
             );
             dialog.show();
         });
-        
+
         // Setup SO list
         List<ConfigManager.SoFile> globalSoFiles = configManager.getAllSoFiles();
         List<ConfigManager.SoFile> appSoFiles = configManager.getAppSoFiles(appInfo.getPackageName());
-        
+
         if (globalSoFiles.isEmpty()) {
             emptyText.setVisibility(View.VISIBLE);
             soListRecyclerView.setVisibility(View.GONE);
         } else {
             emptyText.setVisibility(View.GONE);
             soListRecyclerView.setVisibility(View.VISIBLE);
-            
+
             SoSelectionAdapter soAdapter = new SoSelectionAdapter(globalSoFiles, appSoFiles);
             soListRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
             soListRecyclerView.setAdapter(soAdapter);
         }
-        
+
         // Create dialog
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(getContext())
                 .setTitle(Localized.text(R.string.text_app_configuration))
                 .setView(dialogView)
-                .setPositiveButton(Localized.text(R.string.text_save), (dialog, which) -> {
+                .setMessage(R.string.apply_notice)
+                .setPositiveButton(R.string.apply_and_save, (dialog, which) -> {
                     // Save injection method
                     String selectedMethod;
                     if (radioCustomLinkerInjection.isChecked()) {
@@ -292,43 +299,41 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
                     } else {
                         selectedMethod = "standard";
                     }
-                    configManager.setAppInjectionMethod(appInfo.getPackageName(), selectedMethod);
-                    
-                    // Save SO selection
-                    if (soListRecyclerView.getAdapter() != null) {
-                        SoSelectionAdapter adapter = (SoSelectionAdapter) soListRecyclerView.getAdapter();
-                        List<ConfigManager.SoFile> selectedSoFiles = adapter.getSelectedSoFiles();
-                        
-                        // Clear existing SO files for this app
-                        for (ConfigManager.SoFile existingSo : appSoFiles) {
-                            configManager.removeSoFileFromApp(appInfo.getPackageName(), existingSo);
-                        }
-                        
-                        // Add selected SO files
-                        for (ConfigManager.SoFile soFile : selectedSoFiles) {
-                            configManager.addSoFileToApp(appInfo.getPackageName(), soFile);
-                        }
-                    }
+                    List<ConfigManager.SoFile> selected = soListRecyclerView.getAdapter() == null
+                        ? new ArrayList<>() : ((SoSelectionAdapter) soListRecyclerView.getAdapter()).getSelectedSoFiles();
+                    boolean global = radioUseGlobalGadget.isChecked();
+                    ConfigManager.GadgetConfig gadget = radioUseCustomGadget.isChecked() ? stagedGadget[0] : null;
+                    android.content.Context appContext = requireContext().getApplicationContext();
+                    LOADER.execute(() -> {
+                        ConfigManager.ApplyResult result = configManager.applyAppConfiguration(
+                            appInfo.getPackageName(), selectedMethod, selected, global, gadget);
+                        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                            int message = result == ConfigManager.ApplyResult.RESTARTED ? R.string.apply_done
+                                : result == ConfigManager.ApplyResult.FAILED ? R.string.apply_failed
+                                : result == ConfigManager.ApplyResult.STOP_FAILED ? R.string.apply_stop_failed : R.string.apply_saved;
+                            android.widget.Toast.makeText(appContext, Localized.text(message), android.widget.Toast.LENGTH_LONG).show();
+                        });
+                    });
                 })
                 .setNegativeButton(Localized.text(R.string.text_cancel), null);
-        
+
         builder.show();
     }
-    
+
     // Inner class for SO selection adapter
     private static class SoSelectionAdapter extends RecyclerView.Adapter<SoSelectionAdapter.ViewHolder> {
         private List<ConfigManager.SoFile> globalSoFiles;
         private List<ConfigManager.SoFile> selectedSoFiles;
-        
+
         public SoSelectionAdapter(List<ConfigManager.SoFile> globalSoFiles, List<ConfigManager.SoFile> appSoFiles) {
             this.globalSoFiles = globalSoFiles;
             this.selectedSoFiles = new ArrayList<>(appSoFiles);
         }
-        
+
         public List<ConfigManager.SoFile> getSelectedSoFiles() {
             return new ArrayList<>(selectedSoFiles);
         }
-        
+
         @NonNull
         @Override
         public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -336,34 +341,34 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
                     .inflate(R.layout.item_so_selection, parent, false);
             return new ViewHolder(view);
         }
-        
+
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             ConfigManager.SoFile soFile = globalSoFiles.get(position);
             holder.bind(soFile, selectedSoFiles);
         }
-        
+
         @Override
         public int getItemCount() {
             return globalSoFiles.size();
         }
-        
+
         class ViewHolder extends RecyclerView.ViewHolder {
             CheckBox checkBox;
             TextView nameText;
             TextView pathText;
-            
+
             ViewHolder(@NonNull View itemView) {
                 super(itemView);
                 checkBox = itemView.findViewById(R.id.checkBox);
                 nameText = itemView.findViewById(R.id.textName);
                 pathText = itemView.findViewById(R.id.textPath);
             }
-            
+
             void bind(ConfigManager.SoFile soFile, List<ConfigManager.SoFile> selectedList) {
                 nameText.setText(soFile.name);
                 pathText.setText(soFile.originalPath);
-                
+
                 // Check if this SO is selected
                 boolean isSelected = false;
                 for (ConfigManager.SoFile selected : selectedList) {
@@ -372,10 +377,10 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
                         break;
                     }
                 }
-                
+
                 checkBox.setOnCheckedChangeListener(null);
                 checkBox.setChecked(isSelected);
-                
+
                 checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
                     if (isChecked) {
                         selectedList.add(soFile);
@@ -383,10 +388,10 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
                         selectedList.removeIf(s -> s.storedPath.equals(soFile.storedPath));
                     }
                 });
-                
+
                 itemView.setOnClickListener(v -> checkBox.toggle());
             }
         }
     }
-    
+
 }

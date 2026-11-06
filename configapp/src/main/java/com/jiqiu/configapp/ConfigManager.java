@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 public class ConfigManager {
+    static final java.util.concurrent.ExecutorService IO = java.util.concurrent.Executors.newSingleThreadExecutor();
     private static final String TAG = "ConfigManager";
     public static final String MODULE_PATH = "/data/adb/modules/zygisk-myinjector";
     public static final String CONFIG_FILE = MODULE_PATH + "/config.json";
@@ -105,10 +106,10 @@ public class ConfigManager {
         return "'" + value.replace("'", "'\"'\"'") + "'";
     }
 
-    public void saveConfig() {
+    public boolean saveConfig() {
         String json = gson.toJson(config);
         // Write to temp file first
-        String tempFile = context.getCacheDir() + "/config.json";
+        String tempFile = context.getCacheDir() + "/config-" + java.util.UUID.randomUUID() + ".json";
         try {
             java.io.FileWriter writer = new java.io.FileWriter(tempFile);
             writer.write(json);
@@ -122,8 +123,10 @@ public class ConfigManager {
             
             // Clean up temp file
             new File(tempFile).delete();
+            return published.isSuccess();
         } catch (Exception e) {
             Log.e(TAG, "Failed to save config", e);
+            return false;
         }
     }
     
@@ -132,20 +135,25 @@ public class ConfigManager {
         return appConfig != null && appConfig.enabled;
     }
     
-    public void setAppEnabled(String packageName, boolean enabled) {
+    public ApplyResult setAppEnabled(String packageName, boolean enabled) {
         AppConfig appConfig = config.perAppConfig.get(packageName);
         if (appConfig == null) {
             appConfig = new AppConfig();
             config.perAppConfig.put(packageName, appConfig);
         }
+        boolean previous = appConfig.enabled;
+        if (previous == enabled) return ApplyResult.SAVED;
         appConfig.enabled = enabled;
-        // 自动部署或清理 SO 文件
-        if (enabled) {
-            deploySoFilesToApp(packageName);
-        } else {
-            cleanupAppSoFiles(packageName);
+        if (enabled && !deploySoFilesToApp(packageName)) {
+            appConfig.enabled = previous;
+            return ApplyResult.FAILED;
         }
-        saveConfig();
+        if (!saveConfig()) {
+            appConfig.enabled = previous;
+            return ApplyResult.FAILED;
+        }
+        if (!enabled) cleanupAppSoFiles(packageName);
+        return stopTarget(packageName);
     }
     
     public List<SoFile> getAppSoFiles(String packageName) {
@@ -163,73 +171,110 @@ public class ConfigManager {
         return new ArrayList<>(config.globalSoFiles);
     }
     
-    public void addGlobalSoFile(String originalPath, boolean deleteOriginal) {
-        if (config.globalSoFiles == null) {
-            config.globalSoFiles = new ArrayList<>();
-        }
-        
-        // Keep original filename
-        String fileName = new File(originalPath).getName();
-        String storedPath = SO_STORAGE_DIR + "/" + fileName;
-        
-        // Check if file already exists with same name
-        for (SoFile existing : config.globalSoFiles) {
-            if (existing.name.equals(fileName)) {
-                Log.w(TAG, "SO file with same name already exists: " + fileName);
-                return;
-            }
-        }
-        
-        // Ensure SO storage directory exists
-        Shell.cmd("mkdir -p " + SO_STORAGE_DIR).exec();
-        Shell.cmd("chmod 755 " + SO_STORAGE_DIR).exec();
-        
-        // Copy SO file to our storage
-        Log.i(TAG, "Copying SO file from: " + originalPath + " to: " + storedPath);
-        Shell.Result result = Shell.cmd("cp \"" + originalPath + "\" \"" + storedPath + "\"").exec();
-        
-        if (result.isSuccess()) {
-            // Verify the file was actually copied
-            Shell.Result verifyResult = Shell.cmd("test -f \"" + storedPath + "\" && echo 'exists'").exec();
-            if (!verifyResult.isSuccess() || verifyResult.getOut().isEmpty()) {
-                Log.e(TAG, "File copy appeared successful but file not found at: " + storedPath);
-                return;
-            }
-            
-            // Set proper permissions for SO file (readable and executable)
-            Shell.Result chmodResult = Shell.cmd("chmod 755 \"" + storedPath + "\"").exec();
-            if (!chmodResult.isSuccess()) {
-                Log.e(TAG, "Failed to set permissions on SO file: " + String.join("\n", chmodResult.getErr()));
-            }
-            
-            SoFile soFile = new SoFile();
-            soFile.name = fileName;
-            soFile.storedPath = storedPath;
-            soFile.originalPath = originalPath;
-            config.globalSoFiles.add(soFile);
-            
-            Log.i(TAG, "Successfully added SO file: " + fileName + " to storage");
-            
-            if (deleteOriginal) {
-                Shell.cmd("rm \"" + originalPath + "\"").exec();
-                Log.i(TAG, "Deleted original file: " + originalPath);
-            }
-            
-            saveConfig();
-        } else {
-            Log.e(TAG, "Failed to copy SO file: " + String.join("\n", result.getErr()));
-        }
+    public enum ApplyResult { SAVED, RESTARTED, FAILED, STOP_FAILED }
+
+    public boolean hasSoFileName(String name) {
+        return getAllSoFiles().stream().anyMatch(file -> file.name.equals(name));
     }
-    
-    public void removeGlobalSoFile(SoFile soFile) {
-        if (config.globalSoFiles == null) return;
-        
+
+    public ApplyResult addGlobalSoFile(String originalPath, boolean deleteOriginal) {
+        String name = new File(originalPath).getName();
+        if (!safeFileName(name)) return ApplyResult.FAILED;
+        String storedPath = SO_STORAGE_DIR + "/" + name;
+        String stage = storedPath + "." + java.util.UUID.randomUUID() + ".tmp";
+        Shell.Result copied = Shell.cmd("mkdir -p " + quote(SO_STORAGE_DIR)
+            + " && cp " + quote(originalPath) + " " + quote(stage)
+            + " && chmod 755 " + quote(stage)
+            + " && mv -f " + quote(stage) + " " + quote(storedPath)).exec();
+        if (!copied.isSuccess()) {
+            Shell.cmd("rm -f " + quote(stage)).exec();
+            return ApplyResult.FAILED;
+        }
+        SoFile file = getAllSoFiles().stream().filter(f -> f.name.equals(name)).findFirst().orElse(null);
+        if (file == null) {
+            file = new SoFile(); file.name = name; file.storedPath = storedPath;
+            config.globalSoFiles.add(file);
+        }
+        file.originalPath = originalPath;
+        if (!saveConfig()) return ApplyResult.FAILED;
+        ApplyResult result = ApplyResult.SAVED;
+        for (Map.Entry<String, AppConfig> app : config.perAppConfig.entrySet()) {
+            if (app.getValue().enabled && app.getValue().soFiles.stream().anyMatch(f -> storedPath.equals(f.storedPath))) {
+                if (!deploySoFilesToApp(app.getKey())) return ApplyResult.FAILED;
+                ApplyResult stopped = stopTarget(app.getKey());
+                if (stopped == ApplyResult.STOP_FAILED) result = stopped;
+                else if (result != ApplyResult.STOP_FAILED) result = ApplyResult.RESTARTED;
+            }
+        }
+        if (deleteOriginal && !originalPath.equals(storedPath)) Shell.cmd("rm -f " + quote(originalPath)).exec();
+        return result;
+    }
+
+    private static boolean safeFileName(String name) {
+        return name != null && !name.isEmpty() && !name.contains("/") && !name.equals(".") && !name.equals("..");
+    }
+
+    private ApplyResult stopTarget(String packageName) {
+        if (!packageName.matches("[a-zA-Z0-9_]+(?:\\.[a-zA-Z0-9_]+)+")
+                || packageName.equals(context.getPackageName())) return ApplyResult.STOP_FAILED;
+        // Explicitly authorized by the user: a fresh process is required for the new mapping.
+        return Shell.cmd("am force-stop --user " + (android.os.Process.myUid() / 100000)
+            + " " + quote(packageName)).exec().isSuccess() ? ApplyResult.RESTARTED : ApplyResult.STOP_FAILED;
+    }
+
+    /** One commit per Save: cancellation never writes partial app configuration. */
+    public ApplyResult applyAppConfiguration(String packageName, String method, List<SoFile> selected,
+                                             boolean useGlobal, GadgetConfig gadget) {
+        AppConfig previous = config.perAppConfig.get(packageName);
+        AppConfig next = previous == null ? new AppConfig() : gson.fromJson(gson.toJson(previous), AppConfig.class);
+        next.injectionMethod = method;
+        next.useGlobalGadget = useGlobal;
+        next.gadgetConfig = gadget;
+        next.soFiles = new ArrayList<>(selected);
+        GadgetConfig effective = useGlobal ? config.globalGadgetConfig : gadget;
+        if (effective != null) {
+            SoFile gadgetFile = getAllSoFiles().stream().filter(f -> f.name.equals(effective.gadgetName)).findFirst().orElse(null);
+            if (gadgetFile == null) return ApplyResult.FAILED;
+            if (!next.soFiles.contains(gadgetFile)) next.soFiles.add(gadgetFile);
+        }
+        if (previous != null && gson.toJson(previous).equals(gson.toJson(next))) return ApplyResult.SAVED;
+        config.perAppConfig.put(packageName, next);
+        ApplySequence.Outcome applied = ApplySequence.run(next.enabled,
+            () -> deploySoFilesToApp(packageName), this::saveConfig,
+            () -> stopTarget(packageName) == ApplyResult.RESTARTED);
+        if (applied == ApplySequence.Outcome.FAILED) {
+            if (previous == null) config.perAppConfig.remove(packageName);
+            else config.perAppConfig.put(packageName, previous);
+            return ApplyResult.FAILED;
+        }
+        // Remove only files that this configuration used to own, after publication.
+        if (previous != null) for (SoFile old : previous.soFiles) {
+            if (safeFileName(old.name) && next.soFiles.stream().noneMatch(f -> old.name.equals(f.name)))
+                Shell.cmd("rm -f " + quote("/data/data/" + packageName + "/files/" + old.name)).exec();
+        }
+        return ApplyResult.valueOf(applied.name());
+    }
+
+    public ApplyResult removeGlobalSoFile(SoFile soFile) {
+        if (config.globalSoFiles == null) return ApplyResult.SAVED;
+        List<String> affected = new ArrayList<>();
+        for (Map.Entry<String, AppConfig> app : config.perAppConfig.entrySet()) {
+            boolean removed = app.getValue().soFiles.removeIf(f -> f.storedPath.equals(soFile.storedPath));
+            if (removed && app.getValue().enabled) affected.add(app.getKey());
+        }
         config.globalSoFiles.remove(soFile);
-        // Delete the stored file
-        Shell.cmd("rm \"" + soFile.storedPath + "\"").exec();
-        saveConfig();
+        if (!saveConfig()) return ApplyResult.FAILED;
+        ApplyResult result = ApplyResult.SAVED;
+        for (String pkg : affected) {
+            Shell.cmd("rm -f " + quote("/data/data/" + pkg + "/files/" + soFile.name)).exec();
+            ApplyResult stopped = stopTarget(pkg);
+            if (stopped == ApplyResult.STOP_FAILED) result = stopped;
+            else if (result != ApplyResult.STOP_FAILED) result = ApplyResult.RESTARTED;
+        }
+        if (!Shell.cmd("rm -f " + quote(soFile.storedPath)).exec().isSuccess()) return ApplyResult.FAILED;
+        return result;
     }
-    
+
     public void addSoFileToApp(String packageName, SoFile globalSoFile) {
         AppConfig appConfig = config.perAppConfig.get(packageName);
         if (appConfig == null) {
@@ -323,11 +368,29 @@ public class ConfigManager {
         return config.globalGadgetConfig;
     }
     
-    public void setGlobalGadgetConfig(GadgetConfig gadgetConfig) {
+    public ApplyResult setGlobalGadgetConfig(GadgetConfig gadgetConfig) {
+        GadgetConfig old = config.globalGadgetConfig;
+        if (gson.toJson(old).equals(gson.toJson(gadgetConfig))) return ApplyResult.SAVED;
+        SoFile gadgetFile = gadgetConfig == null ? null : getAllSoFiles().stream()
+            .filter(f -> f.name.equals(gadgetConfig.gadgetName)).findFirst().orElse(null);
+        if (gadgetConfig != null && gadgetFile == null) return ApplyResult.FAILED;
         config.globalGadgetConfig = gadgetConfig;
-        saveConfig();
+        for (AppConfig app : config.perAppConfig.values()) if (app.useGlobalGadget) {
+            if (old != null) app.soFiles.removeIf(file -> file.name.equals(old.gadgetName));
+            if (gadgetFile != null && !app.soFiles.contains(gadgetFile)) app.soFiles.add(gadgetFile);
+        }
+        if (!saveConfig()) return ApplyResult.FAILED;
+        ApplyResult result = ApplyResult.SAVED;
+        for (Map.Entry<String, AppConfig> entry : config.perAppConfig.entrySet()) {
+            if (!entry.getValue().enabled || !entry.getValue().useGlobalGadget) continue;
+            if (!deploySoFilesToApp(entry.getKey())) return ApplyResult.FAILED;
+            ApplyResult stopped = stopTarget(entry.getKey());
+            if (stopped == ApplyResult.STOP_FAILED) result = stopped;
+            else if (result != ApplyResult.STOP_FAILED) result = ApplyResult.RESTARTED;
+        }
+        return result;
     }
-    
+
     public boolean getAppUseGlobalGadget(String packageName) {
         AppConfig appConfig = config.perAppConfig.get(packageName);
         if (appConfig == null) {
@@ -405,7 +468,7 @@ public class ConfigManager {
         }
     }
     
-    private void deployGadgetConfigFile(String packageName, GadgetConfig gadgetConfig) {
+    private boolean deployGadgetConfigFile(String packageName, GadgetConfig gadgetConfig) {
         try {
             // Create gadget config JSON
             String configJson;
@@ -448,7 +511,10 @@ public class ConfigManager {
             String gadgetConfigName = gadgetConfig.gadgetName.replace(".so", ".config.so");
             String targetPath = filesDir + "/" + gadgetConfigName;
             
-            Shell.Result copyResult = Shell.cmd("cp " + tempFile + " " + targetPath).exec();
+            String staged = targetPath + ".new";
+            Shell.Result copyResult = Shell.cmd("cp " + quote(tempFile) + " " + quote(staged)
+                + " && chmod 644 " + quote(staged)
+                + " && mv -f " + quote(staged) + " " + quote(targetPath)).exec();
             if (copyResult.isSuccess()) {
                 // Set permissions
                 Shell.cmd("chmod 644 " + targetPath).exec();
@@ -459,23 +525,23 @@ public class ConfigManager {
             
             // Clean up temp file
             new java.io.File(tempFile).delete();
+            return copyResult.isSuccess();
         } catch (Exception e) {
             Log.e(TAG, "Failed to create gadget config file", e);
+            return false;
         }
     }
     
     // Copy SO files directly to app's data directory
-    private void deploySoFilesToApp(String packageName) {
+    private boolean deploySoFilesToApp(String packageName) {
         AppConfig appConfig = config.perAppConfig.get(packageName);
-        if (appConfig == null || appConfig.soFiles.isEmpty()) {
-            Log.w(TAG, "No SO files to deploy for: " + packageName);
-            return;
-        }
+        if (appConfig == null) return false;
+        if (appConfig.soFiles.isEmpty()) return true;
         
         // First check if we have root access
         if (!Shell.getShell().isRoot()) {
             Log.e(TAG, "No root access available!");
-            return;
+            return false;
         }
         
         // Create files directory in app's data dir
@@ -488,7 +554,7 @@ public class ConfigManager {
         if (!mkdirResult.isSuccess()) {
             Log.e(TAG, "Failed to create directory: " + filesDir);
             Log.e(TAG, "Error: " + String.join("\n", mkdirResult.getErr()));
-            return;
+            return false;
         }
         
         // Set proper permissions and ownership for the files directory
@@ -518,13 +584,13 @@ public class ConfigManager {
             ? labelResult.getOut().get(0).trim().split("\\s+")[0] : "";
         if (!label.matches("[a-zA-Z0-9_:,]+")) {
             Log.e(TAG, "Cannot determine target SELinux label; deployment cancelled");
-            return;
+            return false;
         }
         // Copy each SO file configured for this app
         for (SoFile soFile : appConfig.soFiles) {
             // Use original filename
             if (soFile.name == null || soFile.name.isEmpty() || soFile.name.contains("/")
-                    || soFile.name.equals(".") || soFile.name.equals("..")) continue;
+                    || soFile.name.equals(".") || soFile.name.equals("..")) return false;
             String destPath = filesDir + "/" + soFile.name;
             
             // Check if source file exists
@@ -534,7 +600,7 @@ public class ConfigManager {
                 // Log more details about the missing file
                 Shell.Result lsResult = Shell.cmd("ls -la \"" + SO_STORAGE_DIR + "\"").exec();
                 Log.e(TAG, "Contents of SO storage dir: " + String.join("\n", lsResult.getOut()));
-                continue;
+                return false;
             }
             
             Log.i(TAG, "Copying: " + soFile.storedPath + " to " + destPath);
@@ -554,7 +620,7 @@ public class ConfigManager {
             if (!result.isSuccess()) {
                 Shell.cmd("rm -f " + quote(stagedPath)).exec();
                 Log.e(TAG, "Atomic SO deployment failed: " + String.join("\n", result.getErr()));
-                continue;
+                return false;
             }
 
             // Verify the file was copied with correct permissions
@@ -577,10 +643,11 @@ public class ConfigManager {
         // Deploy gadget config if configured
         ConfigManager.GadgetConfig gadgetToUse = getAppGadgetConfig(packageName);
         if (gadgetToUse != null) {
-            deployGadgetConfigFile(packageName, gadgetToUse);
+            if (!deployGadgetConfigFile(packageName, gadgetToUse)) return false;
         }
+        return true;
     }
-    
+
     // Clean up deployed SO files when app is disabled
     private void cleanupAppSoFiles(String packageName) {
         AppConfig appConfig = config.perAppConfig.get(packageName);

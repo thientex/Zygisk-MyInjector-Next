@@ -34,6 +34,7 @@ public class SoManagerFragment extends Fragment {
     private SoListAdapter adapter;
     private ConfigManager configManager;
     private List<ConfigManager.SoFile> globalSoFiles = new ArrayList<>();
+    private static final java.util.concurrent.ExecutorService FILES = ConfigManager.IO;
     
     private ActivityResultLauncher<Intent> filePickerLauncher;
     private ActivityResultLauncher<Intent> fileBrowserLauncher;
@@ -86,7 +87,7 @@ public class SoManagerFragment extends Fragment {
         
         recyclerView = view.findViewById(R.id.recyclerView);
         emptyView = view.findViewById(R.id.emptyView);
-        FloatingActionButton fabAdd = view.findViewById(R.id.fabAdd);
+        View fabAdd = view.findViewById(R.id.fabAdd);
         
         // Setup RecyclerView
         adapter = new SoListAdapter();
@@ -117,6 +118,8 @@ public class SoManagerFragment extends Fragment {
     }
     
     private void updateUI() {
+        if (getView() != null) ((android.widget.TextView) getView().findViewById(R.id.library_count))
+            .setText(getString(R.string.library_count, globalSoFiles.size()));
         if (globalSoFiles.isEmpty()) {
             emptyView.setVisibility(View.VISIBLE);
             recyclerView.setVisibility(View.GONE);
@@ -124,6 +127,7 @@ public class SoManagerFragment extends Fragment {
             emptyView.setVisibility(View.GONE);
             recyclerView.setVisibility(View.VISIBLE);
             adapter.setSoFiles(globalSoFiles);
+
         }
     }
     
@@ -235,6 +239,13 @@ public class SoManagerFragment extends Fragment {
     }
     
     private void showDeleteOriginalDialog(String path) {
+        if (configManager.hasSoFileName(new java.io.File(path).getName())) {
+            new MaterialAlertDialogBuilder(requireContext()).setTitle(R.string.so_replace_title)
+                .setMessage(R.string.so_replace_message)
+                .setPositiveButton(R.string.apply_and_save, (dialog, which) -> addSoFile(path, false))
+                .setNegativeButton(R.string.text_cancel, null).show();
+            return;
+        }
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(Localized.text(R.string.text_delete_original_file))
                 .setMessage(Localized.text(R.string.text_delete_the_original_so_file_n_npath) + path)
@@ -249,21 +260,19 @@ public class SoManagerFragment extends Fragment {
     }
     
     private void addSoFile(String path, boolean deleteOriginal) {
-        // Verify file exists
-        Shell.Result result = Shell.cmd("test -f \"" + path + "\" && echo 'exists'").exec();
-        if (!result.isSuccess() || result.getOut().isEmpty()) {
-            Toast.makeText(getContext(), Localized.text(R.string.text_file_does_not_exist) + path, Toast.LENGTH_SHORT).show();
-            return;
-        }
-        
-        // Add to global SO files
-        configManager.addGlobalSoFile(path, deleteOriginal);
-        
-        // Reload the list
-        loadSoFiles();
-        Toast.makeText(getContext(), Localized.text(R.string.text_so_file_added), Toast.LENGTH_SHORT).show();
+        android.content.Context context = requireContext().getApplicationContext();
+        FILES.execute(() -> {
+            ConfigManager.ApplyResult result = configManager.addGlobalSoFile(path, deleteOriginal);
+            new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                if (isAdded() && getView() != null) loadSoFiles();
+                int message = result == ConfigManager.ApplyResult.FAILED ? R.string.apply_failed
+                    : result == ConfigManager.ApplyResult.STOP_FAILED ? R.string.apply_stop_failed
+                    : result == ConfigManager.ApplyResult.RESTARTED ? R.string.so_replaced : R.string.text_so_file_added;
+                Toast.makeText(context, Localized.text(message), Toast.LENGTH_LONG).show();
+            });
+        });
     }
-    
+
     private void showDeleteConfirmation(ConfigManager.SoFile soFile) {
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(Localized.text(R.string.text_delete_so_file))
@@ -276,8 +285,15 @@ public class SoManagerFragment extends Fragment {
     }
     
     private void deleteSoFile(ConfigManager.SoFile soFile) {
-        configManager.removeGlobalSoFile(soFile);
-        loadSoFiles();
-        Toast.makeText(getContext(), Localized.text(R.string.text_so_file_deleted), Toast.LENGTH_SHORT).show();
+        android.content.Context context = requireContext().getApplicationContext();
+        FILES.execute(() -> {
+            ConfigManager.ApplyResult result = configManager.removeGlobalSoFile(soFile);
+            new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                if (getView() != null) loadSoFiles();
+                int message = result == ConfigManager.ApplyResult.FAILED ? R.string.apply_failed
+                    : result == ConfigManager.ApplyResult.STOP_FAILED ? R.string.apply_stop_failed : R.string.text_so_file_deleted;
+                Toast.makeText(context, Localized.text(message), Toast.LENGTH_LONG).show();
+            });
+        });
     }
 }

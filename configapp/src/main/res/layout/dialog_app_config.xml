@@ -1,219 +1,35 @@
-<?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content">
-    
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="24dp">
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="16dp">
-
-        <ImageView
-            android:id="@+id/appIcon"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="16dp"
-            android:src="@drawable/ic_launcher_foreground" />
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/appName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:text="@string/text_app_name" />
-
-            <TextView
-                android:id="@+id/packageName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="12sp"
-                android:textColor="?android:attr/textColorSecondary"
-                android:text="com.example.app" />
-
+<?xml version='1.0' encoding='utf-8'?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="24dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="16dp">
+            <ImageView android:id="@+id/appIcon" android:layout_width="48dp" android:layout_height="48dp" android:layout_marginEnd="16dp" android:src="@drawable/ic_launcher_foreground" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                <TextView android:id="@+id/appName" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="18sp" android:textStyle="bold" android:text="@string/text_app_name" />
+                <TextView android:id="@+id/packageName" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="12sp" android:textColor="?android:attr/textColorSecondary" android:text="com.example.app" />
+            </LinearLayout>
         </LinearLayout>
-
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="?android:attr/listDivider" android:layout_marginBottom="16dp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/text_select_so_files_to_load" android:textSize="14sp" android:textColor="?android:attr/textColorSecondary" android:layout_marginBottom="8dp" />
+        <androidx.recyclerview.widget.RecyclerView android:id="@+id/soListRecyclerView" android:layout_width="match_parent" android:layout_height="wrap_content" android:nestedScrollingEnabled="false" android:layout_marginBottom="16dp" />
+        <TextView android:id="@+id/emptyText" android:layout_width="match_parent" android:layout_height="100dp" android:gravity="center" android:text="@string/text_no_so_files_available_nadd_a_file_in_the_so_library_first" android:textSize="14sp" android:textColor="?android:attr/textColorTertiary" android:visibility="gone" />
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="?android:attr/listDivider" android:layout_marginTop="16dp" android:layout_marginBottom="16dp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/text_gadget_configuration" android:textSize="14sp" android:textColor="?android:attr/textColorSecondary" android:layout_marginBottom="8dp" />
+        <RadioGroup android:id="@+id/gadgetConfigGroup" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginBottom="8dp">
+            <RadioButton android:id="@+id/radioNoGadget" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/text_do_not_use_gadget" android:checked="true" />
+            <RadioButton android:id="@+id/radioUseGlobalGadget" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/text_use_global_gadget_settings" />
+            <TextView android:id="@+id/tvGlobalGadgetInfo" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="32dp" android:layout_marginBottom="4dp" android:text="@string/text_global_gadget_is_not_configured" android:textColor="?android:attr/textColorSecondary" android:textSize="12sp" />
+            <RadioButton android:id="@+id/radioUseCustomGadget" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/text_custom_gadget_settings" />
+        </RadioGroup>
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnConfigureGadget" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/text_configure_gadget" android:textSize="14sp" style="@style/Widget.MaterialComponents.Button.OutlinedButton" android:enabled="false" android:visibility="gone" android:layout_marginBottom="8dp" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/text_gadget_supports_frida_debugging_with_a_configurable_address_and_p" android:textSize="12sp" android:textColor="?android:attr/textColorSecondary" android:layout_marginBottom="16dp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/text_loading_method" android:textSize="14sp" android:textColor="?android:attr/textColorSecondary" android:layout_marginBottom="8dp" />
+        <RadioGroup android:id="@+id/injectionMethodGroup" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+            <RadioButton android:id="@+id/radioStandardInjection" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/text_standard" android:checked="true" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="32dp" android:layout_marginBottom="8dp" android:text="@string/text_load_using_standard_dlopen" android:textColor="?android:attr/textColorSecondary" android:textSize="12sp" />
+            <RadioButton android:id="@+id/radioRiruInjection" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/text_riru" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/text_load_with_riru_hide" android:textSize="12sp" android:textColor="?android:attr/textColorSecondary" android:layout_marginStart="32dp" android:layout_marginBottom="8dp" />
+            <RadioButton android:id="@+id/radioCustomLinkerInjection" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/text_custom_linker" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/text_load_using_the_custom_elf_loader" android:textSize="12sp" android:textColor="?android:attr/textColorSecondary" android:layout_marginStart="32dp" />
+        </RadioGroup>
     </LinearLayout>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="?android:attr/listDivider"
-        android:layout_marginBottom="16dp" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/text_select_so_files_to_load"
-        android:textSize="14sp"
-        android:textColor="?android:attr/textColorSecondary"
-        android:layout_marginBottom="8dp" />
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/soListRecyclerView"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:nestedScrollingEnabled="false"
-        android:layout_marginBottom="16dp" />
-
-    <TextView
-        android:id="@+id/emptyText"
-        android:layout_width="match_parent"
-        android:layout_height="100dp"
-        android:gravity="center"
-        android:text="@string/text_no_so_files_available_nadd_a_file_in_the_so_library_first"
-        android:textSize="14sp"
-        android:textColor="?android:attr/textColorTertiary"
-        android:visibility="gone" />
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="?android:attr/listDivider"
-        android:layout_marginTop="16dp"
-        android:layout_marginBottom="16dp" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/text_gadget_configuration"
-        android:textSize="14sp"
-        android:textColor="?android:attr/textColorSecondary"
-        android:layout_marginBottom="8dp" />
-
-    <RadioGroup
-        android:id="@+id/gadgetConfigGroup"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_marginBottom="8dp">
-
-        <RadioButton
-            android:id="@+id/radioNoGadget"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/text_do_not_use_gadget"
-            android:checked="true" />
-
-        <RadioButton
-            android:id="@+id/radioUseGlobalGadget"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/text_use_global_gadget_settings" />
-
-        <TextView
-            android:id="@+id/tvGlobalGadgetInfo"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="32dp"
-            android:layout_marginBottom="4dp"
-            android:text="@string/text_global_gadget_is_not_configured"
-            android:textColor="?android:attr/textColorSecondary"
-            android:textSize="12sp" />
-
-        <RadioButton
-            android:id="@+id/radioUseCustomGadget"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/text_custom_gadget_settings" />
-
-    </RadioGroup>
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnConfigureGadget"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/text_configure_gadget"
-        android:textSize="14sp"
-        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-        android:enabled="false"
-        android:visibility="gone"
-        android:layout_marginBottom="8dp" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/text_gadget_supports_frida_debugging_with_a_configurable_address_and_p"
-        android:textSize="12sp"
-        android:textColor="?android:attr/textColorSecondary"
-        android:layout_marginBottom="16dp" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/text_loading_method"
-        android:textSize="14sp"
-        android:textColor="?android:attr/textColorSecondary"
-        android:layout_marginBottom="8dp" />
-
-    <RadioGroup
-        android:id="@+id/injectionMethodGroup"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
-
-        <RadioButton
-            android:id="@+id/radioStandardInjection"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/text_standard"
-            android:checked="true" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="32dp"
-            android:layout_marginBottom="8dp"
-            android:text="@string/text_load_using_standard_dlopen"
-            android:textColor="?android:attr/textColorSecondary"
-            android:textSize="12sp" />
-
-        <RadioButton
-            android:id="@+id/radioRiruInjection"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/text_riru" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/text_load_with_riru_hide"
-            android:textSize="12sp"
-            android:textColor="?android:attr/textColorSecondary"
-            android:layout_marginStart="32dp"
-            android:layout_marginBottom="8dp" />
-
-        <RadioButton
-            android:id="@+id/radioCustomLinkerInjection"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/text_custom_linker" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/text_load_using_the_custom_elf_loader"
-            android:textSize="12sp"
-            android:textColor="?android:attr/textColorSecondary"
-            android:layout_marginStart="32dp" />
-
-    </RadioGroup>
-    
-    </LinearLayout>
-
 </ScrollView>

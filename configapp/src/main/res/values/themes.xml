@@ -1,12 +1,37 @@
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <style name="Base.Theme.ZygiskMyInjector" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">#3659B8</item>
-        <item name="colorSecondary">#3659B8</item>
+        <item name="colorPrimary">#5571D8</item>
+        <item name="colorSecondary">#5571D8</item>
         <item name="colorSurface">#FFFFFF</item>
-        <item name="colorOnSurface">#17213A</item>
-        <item name="android:colorBackground">#F3F5FB</item>
-        <item name="android:windowLightStatusBar">true</item>
+        <item name="colorOnSurface">#202B48</item>
+        <item name="colorOnSurfaceVariant">#65718B</item>
+        <item name="colorSurfaceVariant">#E7EAFE</item>
+        <item name="colorPrimaryContainer">#DCE4FF</item>
+        <item name="colorSecondaryContainer">#DCE5FF</item>
+        <item name="android:colorBackground">#EEF1FA</item>
+        <item name="android:fontFamily">@font/fira_sans</item>
+        <item name="fontFamily">@font/fira_sans</item>
+        <item name="android:windowLightStatusBar">false</item>
         <item name="materialCardViewStyle">@style/InjectorCard</item>
+        <item name="materialButtonStyle">@style/InjectorButton</item>
+        <item name="textInputStyle">@style/InjectorInput</item>
+        <item name="homeAsUpIndicator">@drawable/ic_chevron_left</item>
+        <item name="textAppearanceDisplayLarge">@style/InjectorText.DisplayLarge</item>
+        <item name="textAppearanceDisplayMedium">@style/InjectorText.DisplayMedium</item>
+        <item name="textAppearanceDisplaySmall">@style/InjectorText.DisplaySmall</item>
+        <item name="textAppearanceHeadlineLarge">@style/InjectorText.HeadlineLarge</item>
+        <item name="textAppearanceHeadlineMedium">@style/InjectorText.HeadlineMedium</item>
+        <item name="textAppearanceHeadlineSmall">@style/InjectorText.HeadlineSmall</item>
+        <item name="textAppearanceTitleLarge">@style/InjectorText.TitleLarge</item>
+        <item name="textAppearanceTitleMedium">@style/InjectorText.TitleMedium</item>
+        <item name="textAppearanceTitleSmall">@style/InjectorText.TitleSmall</item>
+        <item name="textAppearanceBodyLarge">@style/InjectorText.BodyLarge</item>
+        <item name="textAppearanceBodyMedium">@style/InjectorText.BodyMedium</item>
+        <item name="textAppearanceBodySmall">@style/InjectorText.BodySmall</item>
+        <item name="textAppearanceLabelLarge">@style/InjectorText.LabelLarge</item>
+        <item name="textAppearanceLabelMedium">@style/InjectorText.LabelMedium</item>
+        <item name="textAppearanceLabelSmall">@style/InjectorText.LabelSmall</item>
     </style>
     <style name="Theme.ZygiskMyInjector" parent="Base.Theme.ZygiskMyInjector" />
 </resources>

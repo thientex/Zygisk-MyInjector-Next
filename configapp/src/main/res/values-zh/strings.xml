@@ -116,4 +116,25 @@
     <string name="language_english">English</string>
     <string name="language_vietnamese">Tiếng Việt</string>
     <string name="language_chinese">中文</string>
+    <string name="workspace_subtitle">"你的库，你的工作空间。"</string>
+    <string name="library_subtitle">"集中管理你的 SO 文件。"</string>
+    <string name="library_count">"库中共有 %1$d 个文件"</string>
+    <string name="appearance">"外观"</string>
+    <string name="appearance_hint">"自定义你的工作空间。"</string>
+    <string name="appearance_system">"跟随系统"</string>
+    <string name="appearance_light">"浅色"</string>
+    <string name="appearance_dark">"深色"</string>
+    <string name="apply_and_save">"保存并应用"</string>
+    <string name="apply_notice">"保存更改将关闭目标应用，以便下次启动时加载新的 SO 文件。"</string>
+    <string name="apply_done">"配置已应用，请重新打开目标应用。"</string>
+    <string name="apply_saved">"配置已保存。"</string>
+    <string name="apply_failed">"无法应用更改，请检查 root 权限及 SO 文件。"</string>
+    <string name="apply_stop_failed">"文件已保存，但无法关闭目标应用，请先重启其进程。"</string>
+    <string name="so_replace_title">"替换 SO 文件？"</string>
+    <string name="so_replace_message">"库中已存在同名文件。是否替换并关闭正在使用该文件的已启用应用？"</string>
+    <string name="so_replaced">"SO 文件已更新，请重新打开相关应用。"</string>
+    <string name="root_retry">"重新检查"</string>
+    <string name="root_ready">"已获得 root 权限"</string>
+    <string name="personalization">"个性化"</string>
+    <string name="font_credit">"Fira Sans · Lucide 图标"</string>
 </resources>

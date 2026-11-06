@@ -116,4 +116,25 @@
     <string name="language_english">English</string>
     <string name="language_vietnamese">Tiếng Việt</string>
     <string name="language_chinese">中文</string>
+    <string name="workspace_subtitle">"Thư viện và ứng dụng của bạn."</string>
+    <string name="library_subtitle">"Quản lý các tệp SO để dùng cho ứng dụng."</string>
+    <string name="library_count">"%1$d tệp trong thư viện"</string>
+    <string name="appearance">"Giao diện"</string>
+    <string name="appearance_hint">"Tùy chỉnh không gian của bạn."</string>
+    <string name="appearance_system">"Theo hệ thống"</string>
+    <string name="appearance_light">"Sáng"</string>
+    <string name="appearance_dark">"Tối"</string>
+    <string name="apply_and_save">"Lưu và áp dụng"</string>
+    <string name="apply_notice">"Lưu thay đổi sẽ đóng ứng dụng đích để nạp SO mới khi mở lại."</string>
+    <string name="apply_done">"Đã áp dụng cấu hình. Hãy mở lại ứng dụng đích."</string>
+    <string name="apply_saved">"Đã lưu cấu hình."</string>
+    <string name="apply_failed">"Không áp dụng được thay đổi. Hãy kiểm tra quyền root và tệp SO."</string>
+    <string name="apply_stop_failed">"Đã lưu tệp nhưng không đóng được ứng dụng đích. Hãy khởi động lại tiến trình trước khi thử."</string>
+    <string name="so_replace_title">"Thay thế tệp SO?"</string>
+    <string name="so_replace_message">"Tệp cùng tên đã có trong thư viện. Thay thế và đóng các ứng dụng đang bật dùng tệp này?"</string>
+    <string name="so_replaced">"Đã cập nhật SO. Hãy mở lại ứng dụng bị ảnh hưởng."</string>
+    <string name="root_retry">"Kiểm tra lại"</string>
+    <string name="root_ready">"Đã cấp quyền root"</string>
+    <string name="personalization">"Cá nhân hóa"</string>
+    <string name="font_credit">"Fira Sans · Biểu tượng Lucide"</string>
 </resources>

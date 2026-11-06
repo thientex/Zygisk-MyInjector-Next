@@ -43,6 +43,7 @@ namespace Config {
     
     // Read configuration from file
     ModuleConfig readConfig();
+    void reloadConfig();
     
     // Check if app is enabled for injection
     bool isAppEnabled(const std::string& packageName);

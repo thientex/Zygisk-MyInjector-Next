@@ -16,8 +16,8 @@ android {
         applicationId "com.jiqiu.configapp"
         minSdk 24
         targetSdk 34
-        versionCode 130
-        versionName "1.3.0-private"
+        versionCode 140
+        versionName "1.4.0-private"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

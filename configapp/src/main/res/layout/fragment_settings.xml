@@ -1,230 +1,61 @@
-<?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".SettingsFragment">
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
-
-        <!-- 全局设置标题 -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/global_settings"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="16dp" />
-
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/language" android:textAppearance="?attr/textAppearanceTitleMedium" />
-        <Spinner android:id="@+id/language_picker" android:layout_width="match_parent"
-            android:layout_height="56dp" android:layout_marginBottom="16dp" />
-        <!-- 过滤系统应用设置 -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/filter_system_apps"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="8dp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/filter_system_apps_desc"
-                    android:textSize="14sp"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:layout_marginBottom="12dp" />
-
-                <RadioGroup
-                    android:id="@+id/radio_group_filter"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
-
-                    <RadioButton
-                        android:id="@+id/radio_show_all"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="@string/show_all_apps"
-                        android:checked="true" />
-
-                    <RadioButton
-                        android:id="@+id/radio_hide_system"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="@string/hide_system_apps" />
-
-                </RadioGroup>
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- 注入延迟时间设置 -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/text_injection_delay"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="8dp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/text_wait_before_loading_so_files_to_allow_the_app_to_initialize"
-                    android:textSize="14sp"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:layout_marginBottom="12dp" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/text_delay_seconds"
-                        android:textSize="14sp"
-                        android:layout_marginEnd="8dp" />
-
-                    <EditText
-                        android:id="@+id/editInjectionDelay"
-                        android:layout_width="80dp"
-                        android:layout_height="wrap_content"
-                        android:inputType="number"
-                        android:text="2"
-                        android:textAlignment="center"
-                        android:hint="0-60"
-                        android:layout_marginEnd="8dp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/text_seconds"
-                        android:textSize="14sp" />
-
+<?xml version='1.0' encoding='utf-8'?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true" android:clipToPadding="false">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="24dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/title_settings" android:textAppearance="?attr/textAppearanceHeadlineSmall" android:layout_marginBottom="6dp" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/appearance_hint" android:textAppearance="?attr/textAppearanceBodyMedium" android:textColor="?attr/colorOnSurfaceVariant" android:layout_marginBottom="24dp" />
+        <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:layout_marginBottom="16dp">
+                    <ImageView android:layout_width="44dp" android:layout_height="44dp" android:padding="12dp" android:background="@drawable/icon_tile" android:src="@drawable/ic_globe" app:tint="?attr/colorPrimary" android:importantForAccessibility="no" />
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="14dp" android:text="@string/language" android:textAppearance="?attr/textAppearanceTitleMedium" />
                 </LinearLayout>
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/text_suggested_2_5_seconds_some_apps_need_longer"
-                    android:textSize="12sp"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:layout_marginTop="8dp" />
-
+                <Spinner android:id="@+id/language_picker" android:layout_width="match_parent" android:layout_height="52dp" android:spinnerMode="dialog" />
             </LinearLayout>
-
         </com.google.android.material.card.MaterialCardView>
-
-        <!-- 全局Gadget配置 -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/text_global_gadget_configuration"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="8dp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/text_default_gadget_settings_individual_apps_can_override_them"
-                    android:textSize="14sp"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:layout_marginBottom="12dp" />
-
-                <TextView
-                    android:id="@+id/tvGlobalGadgetStatus"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/text_not_configured"
-                    android:textSize="14sp"
-                    android:layout_marginBottom="8dp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnConfigureGlobalGadget"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/text_configure_global_gadget"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
-
+        <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:layout_marginBottom="16dp">
+                    <ImageView android:layout_width="44dp" android:layout_height="44dp" android:padding="12dp" android:background="@drawable/icon_tile" android:src="@drawable/ic_moon" app:tint="?attr/colorPrimary" android:importantForAccessibility="no" />
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="14dp" android:text="@string/appearance" android:textAppearance="?attr/textAppearanceTitleMedium" />
+                </LinearLayout>
+                <Spinner android:id="@+id/theme_picker" android:layout_width="match_parent" android:layout_height="52dp" android:spinnerMode="dialog" />
             </LinearLayout>
-
         </com.google.android.material.card.MaterialCardView>
-
-        <!-- 其他设置可以在这里添加 -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/about"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="8dp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/app_description"
-                    android:textSize="14sp"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
-
+        <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:layout_marginBottom="16dp">
+                    <ImageView android:layout_width="44dp" android:layout_height="44dp" android:padding="12dp" android:background="@drawable/icon_tile" android:src="@drawable/ic_layout_grid" app:tint="?attr/colorPrimary" android:importantForAccessibility="no" />
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="14dp" android:text="@string/filter_system_apps" android:textAppearance="?attr/textAppearanceTitleMedium" />
+                </LinearLayout>
+                <RadioGroup android:id="@+id/radio_group_filter" android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <com.google.android.material.radiobutton.MaterialRadioButton android:id="@+id/radio_show_all" android:layout_width="match_parent" android:layout_height="52dp" android:text="@string/show_all_apps" />
+                    <com.google.android.material.radiobutton.MaterialRadioButton android:id="@+id/radio_hide_system" android:layout_width="match_parent" android:layout_height="52dp" android:text="@string/hide_system_apps" />
+                </RadioGroup>
             </LinearLayout>
-
         </com.google.android.material.card.MaterialCardView>
-
+        <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:layout_marginBottom="16dp">
+                    <ImageView android:layout_width="44dp" android:layout_height="44dp" android:padding="12dp" android:background="@drawable/icon_tile" android:src="@drawable/ic_clock" app:tint="?attr/colorPrimary" android:importantForAccessibility="no" />
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="14dp" android:text="@string/text_injection_delay" android:textAppearance="?attr/textAppearanceTitleMedium" />
+                </LinearLayout>
+                <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/text_delay_seconds">
+                    <com.google.android.material.textfield.TextInputEditText android:id="@+id/editInjectionDelay" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="number" android:maxLength="2" />
+                </com.google.android.material.textfield.TextInputLayout>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/text_suggested_2_5_seconds_some_apps_need_longer" android:textAppearance="?attr/textAppearanceBodySmall" android:layout_marginTop="12dp" android:textColor="?attr/colorOnSurfaceVariant" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+        <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:layout_marginBottom="16dp">
+                    <ImageView android:layout_width="44dp" android:layout_height="44dp" android:padding="12dp" android:background="@drawable/icon_tile" android:src="@drawable/ic_cpu" app:tint="?attr/colorPrimary" android:importantForAccessibility="no" />
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="14dp" android:text="@string/text_global_gadget_configuration" android:textAppearance="?attr/textAppearanceTitleMedium" />
+                </LinearLayout>
+                <TextView android:id="@+id/tvGlobalGadgetStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/text_not_configured" android:layout_marginBottom="12dp" />
+                <com.google.android.material.button.MaterialButton android:id="@+id/btnConfigureGlobalGadget" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/text_configure_global_gadget" app:icon="@drawable/ic_sliders_horizontal" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/app_description" android:textAppearance="?attr/textAppearanceBodySmall" android:gravity="center" android:textColor="?attr/colorOnSurfaceVariant" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/font_credit" android:textAppearance="?attr/textAppearanceBodySmall" android:gravity="center" android:layout_marginTop="8dp" android:textColor="?attr/colorOnSurfaceVariant" />
     </LinearLayout>
-
 </ScrollView>

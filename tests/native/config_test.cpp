@@ -11,4 +11,7 @@ int main() {
     assert(Config::g_config.perAppConfig.at("example.app").enabled);
     assert(Config::g_config.perAppConfig.at("example.app").soFiles.size() == 1);
     assert(Config::g_config.perAppConfig.at("example.app").gadgetConfig->port == 27042);
+    Config::g_configLoaded = true;
+    Config::reloadConfig();
+    assert(Config::g_config.perAppConfig.find("example.app") == Config::g_config.perAppConfig.end());
 }

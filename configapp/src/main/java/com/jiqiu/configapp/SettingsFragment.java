@@ -56,11 +56,26 @@ public class SettingsFragment extends Fragment {
         initSharedPreferences();
         loadSettings();
         setupListeners();
+        android.widget.Spinner themes = view.findViewById(R.id.theme_picker);
+        String[] themeLabels = {getString(R.string.appearance_system), getString(R.string.appearance_light), getString(R.string.appearance_dark)};
+        int[] modes = {-1, 1, 2};
+        themes.setAdapter(new android.widget.ArrayAdapter<>(requireContext(), R.layout.spinner_item, themeLabels));
+        int mode = sharedPreferences.getInt("theme", -1);
+        for (int i = 0; i < modes.length; i++) if (modes[i] == mode) themes.setSelection(i);
+        themes.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+            public void onItemSelected(android.widget.AdapterView<?> parent, View row, int position, long id) {
+                if (modes[position] != sharedPreferences.getInt("theme", -1)) {
+                    sharedPreferences.edit().putInt("theme", modes[position]).apply();
+                    androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(modes[position]);
+                }
+            }
+        });
         android.widget.Spinner languages = view.findViewById(R.id.language_picker);
         String[] tags = {"", "en", "vi", "zh"};
         String[] labels = {getString(R.string.language_system), getString(R.string.language_english), getString(R.string.language_vietnamese), getString(R.string.language_chinese)};
         android.widget.ArrayAdapter<String> languageAdapter = new android.widget.ArrayAdapter<>(
-            requireContext(), android.R.layout.simple_spinner_dropdown_item, labels);
+            requireContext(), R.layout.spinner_item, labels);
         languages.setAdapter(languageAdapter);
         String selected = sharedPreferences.getString("language", "");
         for (int i = 0; i < tags.length; i++) if (tags[i].equals(selected)) languages.setSelection(i);
@@ -145,7 +160,8 @@ public class SettingsFragment extends Fragment {
                         if (delay < 0) delay = 0;
                         if (delay > 60) delay = 60;
                         
-                        configManager.setInjectionDelay(delay);
+                        final int value = delay;
+                        ConfigManager.IO.execute(() -> configManager.setInjectionDelay(value));
                     } catch (NumberFormatException e) {
                         // Ignore invalid input
                     }
@@ -190,8 +206,17 @@ public class SettingsFragment extends Fragment {
             configManager.getGlobalGadgetConfig(),
             gadgetConfig -> {
                 // Save global gadget configuration
-                configManager.setGlobalGadgetConfig(gadgetConfig);
-                updateGlobalGadgetStatus();
+                android.content.Context context = requireContext().getApplicationContext();
+                ConfigManager.IO.execute(() -> {
+                    ConfigManager.ApplyResult result = configManager.setGlobalGadgetConfig(gadgetConfig);
+                    new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                        if (getView() != null) updateGlobalGadgetStatus();
+                        int message = result == ConfigManager.ApplyResult.FAILED ? R.string.apply_failed
+                            : result == ConfigManager.ApplyResult.STOP_FAILED ? R.string.apply_stop_failed
+                            : result == ConfigManager.ApplyResult.RESTARTED ? R.string.apply_done : R.string.apply_saved;
+                        android.widget.Toast.makeText(context, Localized.text(message), android.widget.Toast.LENGTH_LONG).show();
+                    });
+                });
             }
         );
         dialog.show();

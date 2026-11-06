@@ -57,7 +57,7 @@ public class ConfigApplyReceiver extends BroadcastReceiver {
         }
         
         // 在后台线程处理，避免阻塞主线程
-        new Thread(() -> {
+        ConfigManager.IO.execute(() -> {
             try {
                 ConfigManager configManager = new ConfigManager(context);
                 
@@ -146,6 +146,6 @@ public class ConfigApplyReceiver extends BroadcastReceiver {
             } catch (Exception e) {
                 Log.e(TAG, "Error applying config", e);
             }
-        }).start();
+        });
     }
 }
