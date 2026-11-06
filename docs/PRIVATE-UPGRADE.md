@@ -1,6 +1,14 @@
-# Private upgrade 1.4.0
+# Private upgrade 1.4.1
 
 This working tree is based on jiqiu2022/Zygisk-MyInjector. The original MIT license and attribution are retained. Nothing has been pushed to GitHub.
+
+## Root detection fix in 1.4.1
+
+Version 1.4.0 incorrectly read stdout from `shell.newJob().add("id -u").exec()` without configuring output collection. libsu's shell-bound jobs discard stdout by default (unlike `Shell.cmd()`). As a result, even an authorized root shell was rejected. The production probe now explicitly uses `.to(stdout, stderr)` and verifies the exit code and captured UID, while keeping stderr separate.
+
+`tests/host/run.py` runs the production RootProbe against the real libsu 6.0.0 runtime and a real host `sh`, using a small TextUtils platform shim only during shell initialization. It reproduces the old empty-stdout result and covers root/non-root outputs, failed commands, stderr warnings, missing output and ambiguous output. Controlled `id` output tests command I/O, not actual Android root privileges. Existing session-policy tests did not exercise this libsu contract and therefore missed the regression in 1.4.0.
+
+APK signing is unchanged; updating 1.4.0 in place is sufficient and does not require wiping data. Native module code is unchanged from 1.4.0.
 
 ## Changes in 1.4.0
 

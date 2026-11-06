@@ -34,8 +34,7 @@ final class RootAccess {
             public boolean alive() { return shell.isAlive(); }
             public boolean root() { return shell.isRoot(); }
             public boolean uidIsRoot() {
-                Shell.Result probe = shell.newJob().add("id -u").exec();
-                return probe.isSuccess() && probe.getOut().size() == 1 && "0".equals(probe.getOut().get(0).trim());
+                return RootProbe.uidIsRoot(shell);
             }
             public void close() { try { shell.close(); } catch (IOException ignored) {} }
         };
