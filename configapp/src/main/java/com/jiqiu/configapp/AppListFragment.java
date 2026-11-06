@@ -45,6 +45,7 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
     private TextInputEditText searchEditText;
     private ProgressBar progressBar;
 
+    private boolean loadingApps;
     private List<AppInfo> allApps;
     private boolean hideSystemApps = false;
     private ConfigManager configManager;
@@ -63,6 +64,12 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
         initViews(view);
         setupRecyclerView();
         setupSearchView();
+        view.findViewById(R.id.refresh_apps).setOnClickListener(v -> {
+            if (loadingApps) return;
+            AppCatalog.clear();
+            AppIconLoader.clear();
+            loadApps();
+        });
         loadApps();
     }
 
@@ -86,6 +93,7 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
     @Override
     public void onDestroyView() {
         if (pendingSearch != null) searchHandler.removeCallbacks(pendingSearch);
+        loadingApps = false;
         super.onDestroyView();
     }
 
@@ -124,14 +132,18 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
     }
 
     private void loadApps() {
+        if (loadingApps) return;
+        loadingApps = true;
+        getView().findViewById(R.id.refresh_apps).setEnabled(false);
         progressBar.setVisibility(View.VISIBLE);
-        recyclerView.setVisibility(View.GONE);
+        recyclerView.setVisibility(allApps == null ? View.GONE : View.VISIBLE);
 
         hideSystemApps = requireContext().getSharedPreferences("MyInjectorSettings", 0)
             .getBoolean("hide_system_apps", false);
         final android.content.Context context = requireContext().getApplicationContext();
         final View currentView = getView();
         LOADER.execute(() -> {
+            try {
             ConfigManager manager = new ConfigManager(context);
 
             List<AppInfo> apps = AppCatalog.memory;
@@ -140,6 +152,8 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
             final List<AppInfo> result = apps;
             new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
                 if (getView() != currentView || !isAdded()) return;
+                loadingApps = false;
+                currentView.findViewById(R.id.refresh_apps).setEnabled(true);
                 configManager = manager;
                 allApps = result;
                 adapter.setAppList(result);
@@ -147,6 +161,16 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
                 recyclerView.setVisibility(View.VISIBLE);
                 filterApps(searchEditText.getText().toString());
             });
+            } catch (RuntimeException error) {
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                    if (getView() != currentView || !isAdded()) return;
+                    loadingApps = false;
+                    currentView.findViewById(R.id.refresh_apps).setEnabled(true);
+                    progressBar.setVisibility(View.GONE);
+                    recyclerView.setVisibility(View.VISIBLE);
+                    android.widget.Toast.makeText(context, Localized.text(R.string.refresh_failed), android.widget.Toast.LENGTH_LONG).show();
+                });
+            }
         });
     }
 

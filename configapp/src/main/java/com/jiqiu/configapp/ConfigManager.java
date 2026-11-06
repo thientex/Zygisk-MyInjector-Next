@@ -728,6 +728,78 @@ public class ConfigManager {
         deploySoFilesToApp(packageName);
     }
     
+    private java.util.Set<String> installedPackages() {
+        java.util.Set<String> installed = new java.util.HashSet<>();
+        for (android.content.pm.ApplicationInfo info : context.getPackageManager().getInstalledApplications(0))
+            installed.add(info.packageName);
+        if (!installed.contains(context.getPackageName())) throw new IllegalStateException("Incomplete package snapshot");
+        return installed;
+    }
+
+    private void readMaintenanceConfig() {
+        Shell.Result read = RootShell.cmd("if [ -f " + quote(CONFIG_FILE) + " ]; then cat "
+            + quote(CONFIG_FILE) + "; else printf 'null'; fi").exec();
+        if (!read.isSuccess()) throw new IllegalStateException("Cannot read module configuration");
+        ModuleConfig disk = gson.fromJson(String.join("\n", read.getOut()), ModuleConfig.class);
+        if (disk == null) disk = new ModuleConfig();
+        if (disk.perAppConfig == null || disk.globalSoFiles == null) throw new IllegalStateException("Invalid module configuration");
+        config = disk;
+    }
+
+    /** Run only on IO. Negative result means failure; zero is a successful no-op. */
+    public int cleanObsoleteConfigurations() {
+        try {
+            java.util.Set<String> installed = installedPackages();
+            readMaintenanceConfig();
+            List<String> missing = ConfigMaintenance.obsolete(config, installed);
+            if (missing.isEmpty()) return 0;
+            ModuleConfig previous = gson.fromJson(gson.toJson(config), ModuleConfig.class);
+            for (String pkg : missing) config.perAppConfig.remove(pkg);
+            if (!saveConfig()) { config = previous; return -1; }
+            AppCatalog.clear();
+            return missing.size();
+        } catch (RuntimeException error) {
+            Log.e(TAG, "Configuration cleanup failed", error);
+            return -1;
+        }
+    }
+
+    /** Only MyInjector-owned data is removed; never module binaries or the target's files directory. */
+    public boolean factoryReset() {
+        try {
+            java.util.Set<String> installed = installedPackages();
+            readMaintenanceConfig();
+            ModuleConfig previous = config;
+            config = new ModuleConfig();
+            if (!saveConfig()) { config = previous; return false; }
+            boolean success = true;
+            for (Map.Entry<String, AppConfig> entry : previous.perAppConfig.entrySet()) {
+                String pkg = entry.getKey();
+                if (!installed.contains(pkg) || !pkg.matches("[a-zA-Z0-9_]+(?:\\.[a-zA-Z0-9_]+)+")) continue;
+                AppConfig app = entry.getValue();
+                if (app == null) continue;
+                if (app.enabled && stopTarget(pkg) == ApplyResult.STOP_FAILED) success = false;
+                java.util.Set<String> names = new java.util.HashSet<>();
+                if (app.soFiles != null) for (SoFile file : app.soFiles)
+                    if (file != null && ConfigMaintenance.validName(file.name)) names.add(file.name);
+                GadgetConfig gadget = app.useGlobalGadget ? previous.globalGadgetConfig : app.gadgetConfig;
+                if (gadget != null && ConfigMaintenance.validName(gadget.gadgetName)) {
+                    names.add(gadget.gadgetName);
+                    names.add(gadget.gadgetName.replace(".so", ".config.so"));
+                }
+                for (String name : names) if (!RootShell.cmd("rm -f " + quote("/data/data/" + pkg + "/files/" + name)).exec().isSuccess()) success = false;
+            }
+            if (!RootShell.cmd("rm -rf " + quote(SO_STORAGE_DIR)
+                + " && mkdir -p " + quote(SO_STORAGE_DIR) + " && chmod 755 " + quote(SO_STORAGE_DIR)).exec().isSuccess()) success = false;
+            if (!ConfigMaintenance.clearCache(context.getCacheDir())) success = false;
+            AppCatalog.clear();
+            return success;
+        } catch (RuntimeException error) {
+            Log.e(TAG, "Factory reset did not complete", error);
+            return false;
+        }
+    }
+
     // Data classes
     public static class ModuleConfig {
         public boolean enabled = true;

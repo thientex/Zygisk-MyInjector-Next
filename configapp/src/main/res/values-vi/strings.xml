@@ -137,4 +137,14 @@
     <string name="root_ready">"Đã cấp quyền root"</string>
     <string name="personalization">"Cá nhân hóa"</string>
     <string name="font_credit">"Fira Sans · Biểu tượng Lucide"</string>
+<string name="refresh_apps">"Làm mới danh sách ứng dụng"</string>
+<string name="maintenance">"Quản lý dữ liệu"</string>
+<string name="clean_config">"Dọn dẹp tệp cấu hình"</string>
+<string name="clean_confirm">"Xóa cấu hình của các ứng dụng không còn trên máy? Các tệp SO trong thư viện vẫn được giữ."</string>
+<string name="clean_done">"Đã xóa %1$d cấu hình ứng dụng không còn tồn tại."</string>
+<string name="factory_reset">"Khôi phục cài đặt gốc"</string>
+<string name="reset_confirm">"Xóa toàn bộ cấu hình inject, tệp SO đã nhập và tùy chọn của app? Các ứng dụng đã cấu hình sẽ được đóng để ngừng dùng SO. Không thể hoàn tác."</string>
+<string name="reset_done">"Đã khôi phục dữ liệu ứng dụng."</string>
+<string name="maintenance_failed">"Thao tác chưa hoàn tất. Hãy kiểm tra quyền root và thử lại; một phần thay đổi có thể đã được áp dụng."</string>
+<string name="refresh_failed">Không làm mới được danh sách ứng dụng. Hãy thử lại.</string>
 </resources>

@@ -56,6 +56,8 @@ public class SettingsFragment extends Fragment {
         initSharedPreferences();
         loadSettings();
         setupListeners();
+        view.findViewById(R.id.clean_config).setOnClickListener(v -> confirmMaintenance(false));
+        view.findViewById(R.id.factory_reset).setOnClickListener(v -> confirmMaintenance(true));
         android.widget.Spinner themes = view.findViewById(R.id.theme_picker);
         String[] themeLabels = {getString(R.string.appearance_system), getString(R.string.appearance_light), getString(R.string.appearance_dark)};
         int[] modes = {-1, 1, 2};
@@ -221,4 +223,50 @@ public class SettingsFragment extends Fragment {
         );
         dialog.show();
     }
+    private boolean maintaining;
+    private void confirmMaintenance(boolean reset) {
+        if (maintaining) return;
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setTitle(reset ? R.string.factory_reset : R.string.clean_config)
+            .setMessage(reset ? R.string.reset_confirm : R.string.clean_confirm)
+            .setNegativeButton(R.string.text_cancel, null)
+            .setPositiveButton(reset ? R.string.factory_reset : R.string.clean_config, (dialog, which) -> runMaintenance(reset))
+            .show();
+    }
+    private void runMaintenance(boolean reset) {
+        if (maintaining) return;
+        maintaining = true;
+        View screen = getView();
+        screen.findViewById(R.id.clean_config).setEnabled(false);
+        screen.findViewById(R.id.factory_reset).setEnabled(false);
+        android.content.Context context = requireContext().getApplicationContext();
+        ConfigManager.IO.execute(() -> {
+            int cleaned = reset ? 0 : configManager.cleanObsoleteConfigurations();
+            boolean success = reset ? configManager.factoryReset() : cleaned >= 0;
+            if (reset && success) {
+                context.getSharedPreferences("MyInjectorSettings", 0).edit().clear().commit();
+                context.getSharedPreferences("app_catalog", 0).edit().clear().commit();
+            }
+            new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                maintaining = false;
+                String message = !success ? Localized.text(R.string.maintenance_failed)
+                    : reset ? Localized.text(R.string.reset_done) : String.format(java.util.Locale.getDefault(), Localized.text(R.string.clean_done), cleaned);
+                android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show();
+                AppCatalog.clear();
+                AppIconLoader.clear();
+                if (getView() == screen) {
+                    screen.findViewById(R.id.clean_config).setEnabled(true);
+                    screen.findViewById(R.id.factory_reset).setEnabled(true);
+                }
+                if (reset && isAdded()) {
+                    if (success) {
+                        androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(androidx.core.os.LocaleListCompat.getEmptyLocaleList());
+                        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+                    }
+                    requireActivity().recreate();
+                }
+            });
+        });
+    }
+
 }

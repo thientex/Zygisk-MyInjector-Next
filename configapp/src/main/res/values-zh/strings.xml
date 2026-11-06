@@ -137,4 +137,14 @@
     <string name="root_ready">"已获得 root 权限"</string>
     <string name="personalization">"个性化"</string>
     <string name="font_credit">"Fira Sans · Lucide 图标"</string>
+<string name="refresh_apps">"刷新应用列表"</string>
+<string name="maintenance">"数据管理"</string>
+<string name="clean_config">"清理配置文件"</string>
+<string name="clean_confirm">"删除已卸载应用的配置？保留库中的 SO 文件。"</string>
+<string name="clean_done">"已删除 %1$d 个已卸载应用的配置。"</string>
+<string name="factory_reset">"恢复默认设置"</string>
+<string name="reset_confirm">"删除所有注入配置、导入的 SO 和本地设置？将关闭相关应用以卸载 SO。此操作无法撤销。"</string>
+<string name="reset_done">"已重置应用数据。"</string>
+<string name="maintenance_failed">"操作未完成，请检查 root 权限后重试；部分更改可能已生效。"</string>
+<string name="refresh_failed">无法刷新应用列表，请重试。</string>
 </resources>

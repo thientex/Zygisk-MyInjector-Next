@@ -1,6 +1,9 @@
 <?xml version='1.0' encoding='utf-8'?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="20dp" tools:context=".AppListFragment">
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/title_apps" android:textAppearance="?attr/textAppearanceHeadlineSmall" android:layout_marginBottom="16dp" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="16dp">
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/title_apps" android:textAppearance="?attr/textAppearanceHeadlineSmall" />
+        <androidx.appcompat.widget.AppCompatImageButton android:id="@+id/refresh_apps" android:layout_width="48dp" android:layout_height="48dp" android:padding="12dp" android:background="?attr/selectableItemBackgroundBorderless" app:srcCompat="@drawable/ic_refresh_cw" app:tint="?attr/colorPrimary" android:contentDescription="@string/refresh_apps" />
+    </LinearLayout>
     <!-- 搜索框 -->
     <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp" android:hint="@string/search_apps" app:startIconDrawable="@drawable/ic_search">
         <com.google.android.material.textfield.TextInputEditText android:id="@+id/search_edit_text" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="text" android:maxLines="1" />

@@ -1,6 +1,14 @@
-# Private upgrade 1.4.3
+# Private upgrade 1.5.0
 
 This working tree is based on jiqiu2022/Zygisk-MyInjector. The original MIT license and attribution are retained. Nothing has been pushed to GitHub.
+
+## App refresh and data management in 1.5.0
+
+- A refresh icon beside Apps invalidates the in-memory catalog and icon cache, scans PackageManager on the I/O queue and reapplies the current search/filter. Repeated clicks are blocked while loading; failures re-enable the button. A Robolectric regression installs a new package and verifies it appears after the same cache-clear/rescan sequence.
+- Clean configuration reads the on-disk JSON, takes an installed-package snapshot, and removes only missing package entries. Library SO files and installed-app entries are preserved. Invalid/unreadable JSON fails instead of being silently overwritten.
+- Factory reset is confirmed in a dialog. It publishes default configuration, closes enabled configured targets, removes only their configured SO/Gadget files, clears the module SO library and app cache, then resets local language/theme/filter preferences. Program files, module binaries and original SO files outside the app/library are kept.
+- Both operations run on the existing serial I/O queue. Partial failures are reported, not treated as a successful all-or-nothing transaction. Package existence is evaluated for apps visible to PackageManager in the current Android user/profile.
+- No device-side reset or root deletion was executed during development. Model/path/cache tests and the Android package-catalog regression run locally; a physical device is still needed to verify root commands and installed-package visibility.
 
 ## Compact spacing and full close in 1.4.3
 

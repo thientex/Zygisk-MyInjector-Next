@@ -137,4 +137,14 @@
     <string name="root_ready">"Root access granted"</string>
     <string name="personalization">"Personalization"</string>
     <string name="font_credit">"Fira Sans · Lucide icons"</string>
+<string name="refresh_apps">"Refresh apps"</string>
+<string name="maintenance">"Data management"</string>
+<string name="clean_config">"Clean configuration files"</string>
+<string name="clean_confirm">"Remove configuration entries for apps no longer installed? SO files in the library will be kept."</string>
+<string name="clean_done">"Removed %1$d obsolete app configurations."</string>
+<string name="factory_reset">"Factory reset"</string>
+<string name="reset_confirm">"Delete all injection settings, imported SO files and local preferences? Configured apps will be closed to unload their SO files. This cannot be undone."</string>
+<string name="reset_done">"App data reset."</string>
+<string name="maintenance_failed">"Operation did not complete. Check root access and try again; some changes may already be applied."</string>
+<string name="refresh_failed">Unable to refresh the app list. Please try again.</string>
 </resources>

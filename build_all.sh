@@ -8,8 +8,8 @@ NC='\033[0m' # No Color
 
 # 模块信息
 MODULE_ID="zygisk-myinjector"
-MODULE_VERSION="1.4.3-private"
-MODULE_VERSION_CODE="143"
+MODULE_VERSION="1.5.0-private"
+MODULE_VERSION_CODE="150"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  Zygisk MyInjector 构建脚本${NC}"

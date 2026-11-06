@@ -51,6 +51,24 @@ public class NavigationLayoutTest {
         assertEquals(2, changes.get());
     }
 
+    @Test public void refreshedCatalogIncludesNewlyInstalledGame() {
+        android.content.Context context = org.robolectric.RuntimeEnvironment.getApplication();
+        AppCatalog.clear();
+        String pkg = "com.example.freshgame";
+        assertFalse(AppCatalog.load(context).stream().anyMatch(app -> pkg.equals(app.getPackageName())));
+        android.content.pm.PackageInfo info = new android.content.pm.PackageInfo();
+        info.packageName = pkg;
+        info.applicationInfo = new android.content.pm.ApplicationInfo();
+        info.applicationInfo.packageName = pkg;
+        info.applicationInfo.sourceDir = "/data/app/freshgame.apk";
+        info.applicationInfo.nonLocalizedLabel = "Fresh Game";
+        org.robolectric.Shadows.shadowOf(context.getPackageManager()).installPackage(info);
+        AppCatalog.clear();
+        try {
+            assertTrue(AppCatalog.load(context).stream().anyMatch(app -> pkg.equals(app.getPackageName())));
+        } finally { AppCatalog.clear(); }
+    }
+
     private void checkLayout(float fontScale) {
         try (ActivityController<Host> activity = Robolectric.buildActivity(Host.class)) {
             Host host = activity.get();
