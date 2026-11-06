@@ -19,3 +19,11 @@ tmp_gadget/
 
 # Frida Gadget local cache
 scripts/.cache/
+
+# Local signing keys and credentials
+*.keystore
+*.jks
+*.p12
+.env
+.env.*
+!.env.example

@@ -1,3 +1,28 @@
+# Zygisk-Myinjector-Next
+
+Bản phát triển tiếp từ [jiqiu2022/Zygisk-MyInjector](https://github.com/jiqiu2022/Zygisk-MyInjector), giữ nguyên giấy phép MIT và ghi nhận tác giả/thành phần gốc.
+
+Mã nguồn hiện tại tương ứng bản **1.4.3-private** đã build trong quá trình phát triển. Hậu tố `private` là tên phiên bản cũ; repository này được công khai theo lựa chọn của chủ repo.
+
+Các thay đổi gồm Anh/Việt trong cài đặt, font Fira Sans, icon Lucide, giao diện sáng/tối, cache danh sách/icon, sắp xếp app bật trước, áp dụng SO kèm đóng tiến trình đích, và hộp thoại thiếu root chỉ có nút đóng-kết thúc tiến trình của MyInjector.
+
+## Build ARM64
+
+Dùng JDK 17, Android SDK 32/34, build-tools 30.0.3/34.0.0, NDK 25.2.9519653 và CMake 3.22.1. Đặt đường dẫn SDK trong `local.properties` hoặc `ANDROID_HOME`.
+
+```sh
+bash gradlew :configapp:assembleDebug :module:assembleRelease -PtargetAbis=arm64-v8a
+```
+
+- APK: `configapp/build/outputs/apk/debug/configapp-debug.apk`
+- ZIP module: `out/zygisk-myinjector-*-release.zip`
+- Kiểm thử: `bash gradlew :configapp:testDebugUnitTest :configapp:lintDebug`
+- Ghi chú kỹ thuật, các giới hạn kiểm thử và lịch sử sửa đổi: [docs/PRIVATE-UPGRADE.md](docs/PRIVATE-UPGRADE.md).
+
+Khóa ký APK dùng trong các bản thử không nằm trong repo. Build mới trên máy khác/CI dùng khóa debug khác sẽ không cập nhật đè APK có chữ ký cũ. Hãy giữ khóa ký riêng và cấu hình ký ổn định nếu phát hành các bản cập nhật.
+
+## Upstream documentation
+
 # Zygisk注入器 - 动动手指轻松注入并隐藏你的SO文件
 
 ## 前言

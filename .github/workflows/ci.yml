@@ -59,8 +59,8 @@ jobs:
       
     - name: Install NDK and CMake
       run: |
-        echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;25.2.9519653"
-        echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "cmake;3.22.1"
+        yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+        "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-32" "platforms;android-34" "build-tools;30.0.3" "build-tools;34.0.0" "ndk;25.2.9519653" "cmake;3.22.1"
     
     - name: Build ConfigApp
       run: |
@@ -71,56 +71,15 @@ jobs:
     - name: Build Module
       run: |
         cd module
-        ../gradlew assembleRelease
+        ../gradlew assembleRelease -PtargetAbis=arm64-v8a
         cd ..
     
     - name: Package Module for Testing
       run: |
-        # 创建临时目录
-        TEMP_DIR="build/magisk_module"
-        rm -rf $TEMP_DIR
-        mkdir -p $TEMP_DIR
-        
-        # 创建 module.prop
-        cat > $TEMP_DIR/module.prop << EOF
-        id=zygisk-myinjector
-        name=Zygisk MyInjector
-        version=dev-${{ github.sha }}
-        versionCode=9999
-        author=jiqiu2022
-        description=A Zygisk module for dynamic library injection with ConfigApp (CI Build)
-        EOF
-        
-        # 复制文件
-        cp module/service.sh $TEMP_DIR/
-        chmod 755 $TEMP_DIR/service.sh
-        
-        # 创建 zygisk 目录并复制 so 文件
-        mkdir -p $TEMP_DIR/zygisk
-        for arch in armeabi-v7a arm64-v8a x86 x86_64; do
-          SO_PATH="module/build/intermediates/stripped_native_libs/release/out/lib/$arch/libmyinjector.so"
-          if [ -f "$SO_PATH" ]; then
-            cp "$SO_PATH" "$TEMP_DIR/zygisk/$arch.so"
-          fi
-        done
-        
-        # 复制 ConfigApp APK
-        cp configapp/build/outputs/apk/debug/configapp-debug.apk $TEMP_DIR/configapp.apk
-        
-        # 创建 META-INF 目录
-        mkdir -p $TEMP_DIR/META-INF/com/google/android
-        touch $TEMP_DIR/META-INF/com/google/android/update-binary
-        touch $TEMP_DIR/META-INF/com/google/android/updater-script
-        
-        # 打包
-        cd $TEMP_DIR
-        zip -r ../../zygisk-myinjector-ci.zip *
-        cd ../..
-        
-        # 列出文件内容
-        echo "Module contents:"
-        unzip -l zygisk-myinjector-ci.zip
-    
+        # Reuse the tested Gradle ZIP, including installer and update-preservation scripts.
+        cp out/zygisk-myinjector-*-release.zip zygisk-myinjector-ci.zip
+        unzip -t zygisk-myinjector-ci.zip
+
     - name: Upload Module Artifact
       uses: actions/upload-artifact@v4
       with:
