@@ -128,7 +128,7 @@
     <string name="apply_notice">"保存更改将关闭目标应用，以便下次启动时加载新的 SO 文件。"</string>
     <string name="apply_done">"配置已应用，请重新打开目标应用。"</string>
     <string name="apply_saved">"配置已保存。"</string>
-    <string name="apply_failed">"无法应用更改，请检查 root 权限及 SO 文件。"</string>
+    <string name="apply_failed">"无法应用更改。"</string>
     <string name="apply_stop_failed">"文件已保存，但无法关闭目标应用，请先重启其进程。"</string>
     <string name="so_replace_title">"替换 SO 文件？"</string>
     <string name="so_replace_message">"库中已存在同名文件。是否替换并关闭正在使用该文件的已启用应用？"</string>

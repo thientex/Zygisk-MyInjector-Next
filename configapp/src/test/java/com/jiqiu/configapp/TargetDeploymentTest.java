@@ -79,21 +79,60 @@ public class TargetDeploymentTest {
             assertEquals(1, Files.list(f.files).count());
         }
     }
+    @Test public void contextCanBeFoundOutsideFirstLsColumn() throws Exception {
+        try (Fixture f = new Fixture()) {
+            f.executable("stat", "#!/bin/sh\n[ \"$2\" != '%C' ] || exit 1\nexec /usr/bin/stat \"$@\"\n");
+            f.executable("ls", "#!/bin/sh\necho 'drwx------ 2 u0_a123 u0_a123 u:object_r:app_data_file:s0:c123,c456 4096 files'\n");
+            assertEquals(0, f.publish("new"));
+        }
+    }
+    @Test public void existingDirectoryDoesNotRequireRelabelPermission() throws Exception {
+        try (Fixture f = new Fixture()) {
+            Files.createDirectory(f.files);
+            String original = read(f.bin.resolve("chcon"));
+            f.executable("chcon", original.replace("#!/bin/sh\n", "#!/bin/sh\n[ \"$2\" != " + TargetDeployment.quote(f.files.toString()) + " ] || exit 1\n"));
+            assertEquals(0, f.publish("new"));
+        }
+    }
+    @Test public void inaccessibleAppDirectoryCanUseAnExplicitRootMountView() throws Exception {
+        try (Fixture f = new Fixture()) {
+            Files.delete(f.data);
+            Path rootView = Files.createDirectories(f.root.resolve("global-view"));
+            Path realData = Files.createDirectories(rootView.resolve(f.data.toString().substring(1)));
+            f.rootView = rootView.toString();
+            assertEquals(0, f.publish("new"));
+            assertEquals("new", read(realData.resolve("files/lib' test.so")));
+            assertFalse(Files.exists(f.data));
+        }
+    }
+    @Test public void alreadyCorrectFileLabelDoesNotRequireRelabelPermission() throws Exception {
+        try (Fixture f = new Fixture()) {
+            Files.createDirectory(f.files);
+            write(f.root.resolve("already-labeled"), "1");
+            f.executable("chcon", "#!/bin/sh\nexit 1\n");
+            assertEquals(0, f.publish("new"));
+        }
+    }
     private static String read(Path p) throws Exception { return new String(Files.readAllBytes(p), java.nio.charset.StandardCharsets.UTF_8); }
     private static void write(Path p, String text) throws Exception { Files.write(p, text.getBytes(java.nio.charset.StandardCharsets.UTF_8)); }
-    private static final class Fixture implements AutoCloseable {
+    static final class Fixture implements AutoCloseable {
         Path root = Files.createTempDirectory("deployment ' test"), data = Files.createDirectory(root.resolve("com.game")),
             files = data.resolve("files"), bin = Files.createDirectory(root.resolve("bin")), source = root.resolve("source.so"),
             fail = root.resolve("fail-label"), calls = root.resolve("labels");
+        String rootView = "/proc/1/root";
         Fixture() throws Exception {
             executable("ls", "#!/bin/sh\necho 'u:object_r:app_data_file:s0:c123,c456 directory'\n");
-            executable("chcon", "#!/bin/sh\necho \"$*\" >> " + TargetDeployment.quote(calls.toString())
-                + "\n[ ! -f " + TargetDeployment.quote(fail.toString()) + " ] || case \"$2\" in *.myinjector.*) exit 1 ;; esac\nexit 0\n");
+            executable("chcon", "#!/bin/sh\n[ ! -f " + TargetDeployment.quote(fail.toString()) + " ] || case \"$2\" in *.myinjector.*) exit 1 ;; esac\n"
+                + "echo \"$*\" >> " + TargetDeployment.quote(calls.toString()) + "\nexit 0\n");
+            executable("stat", "#!/bin/sh\nif [ \"$2\" = '%C' ]; then\nlabel='u:object_r:app_data_file:s0:c123,c456'\n"
+                + "case \"$3\" in */.myinjector.*)\nif [ ! -f " + TargetDeployment.quote(root.resolve("already-labeled").toString())
+                + " ] && ! grep -Fqx \"$label $3\" " + TargetDeployment.quote(calls.toString())
+                + " 2>/dev/null; then label='u:object_r:magisk_file:s0'; fi ;; esac\necho \"$label\"; exit 0\nfi\nexec /usr/bin/stat \"$@\"\n");
         }
         void executable(String name, String script) throws Exception { Path p = bin.resolve(name); write(p, script); p.toFile().setExecutable(true); }
         int publish(String text) throws Exception {
             write(source, text);
-            ProcessBuilder builder = new ProcessBuilder("/bin/sh", "-c", TargetDeployment.script(source.toString(), files.toString(), "lib' test.so", true));
+            ProcessBuilder builder = new ProcessBuilder("/bin/sh", "-c", TargetDeployment.script(source.toString(), files.toString(), "lib' test.so", true, rootView));
             builder.environment().put("PATH", bin + ":" + System.getenv("PATH"));
             builder.redirectErrorStream(true); Process process = builder.start();
             String output = new String(process.getInputStream().readAllBytes()); int status = process.waitFor();

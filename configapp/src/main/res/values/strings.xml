@@ -128,7 +128,7 @@
     <string name="apply_notice">"Saving changes closes the target app so the new SO files load the next time you open it."</string>
     <string name="apply_done">"Configuration applied. Open the target app again."</string>
     <string name="apply_saved">"Configuration saved."</string>
-    <string name="apply_failed">"Could not apply changes. Check root access and the SO files."</string>
+    <string name="apply_failed">"Could not apply the changes."</string>
     <string name="apply_stop_failed">"Files saved, but the target app could not be closed. Restart its process before testing."</string>
     <string name="so_replace_title">"Replace SO file?"</string>
     <string name="so_replace_message">"A file with this name is already in the library. Replace it and close enabled apps that use it?"</string>

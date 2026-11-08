@@ -8,8 +8,8 @@ NC='\033[0m' # No Color
 
 # 模块信息
 MODULE_ID="zygisk-myinjector"
-MODULE_VERSION="1.5.2-private"
-MODULE_VERSION_CODE="152"
+MODULE_VERSION="1.5.0"
+MODULE_VERSION_CODE="153"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  Zygisk MyInjector 构建脚本${NC}"
@@ -56,9 +56,9 @@ mkdir -p $TEMP_DIR
 cat > $TEMP_DIR/module.prop << EOF
 id=$MODULE_ID
 name=Zygisk MyInjector
-version=v$MODULE_VERSION
+version=$MODULE_VERSION
 versionCode=$MODULE_VERSION_CODE
-author=jiqiu
+author=jiqiu2021 & thientex
 description=A Zygisk module for dynamic library injection with ConfigApp
 EOF
 echo -e "  ${GREEN}✓ 创建 module.prop${NC}"

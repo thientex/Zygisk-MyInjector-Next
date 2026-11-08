@@ -1,6 +1,15 @@
-# Private upgrade 1.5.2
+# MyInjector 1.5.0 — build 153
 
 This working tree is based on jiqiu2022/Zygisk-MyInjector. The original MIT license and attribution are retained. The maintained source is published at https://github.com/thientex/Zygisk-MyInjector-Next.
+
+## Deployment compatibility repair and public version 1.5.0 (code 153)
+
+- Display version is exactly 1.5.0 in both APK and module; code 153 remains newer than previous development builds. Module author preserves jiqiu2021 and adds thientex. The alternative build script uses the same metadata.
+- Prefer /system/bin/sh and Android tools over root-manager PATH applets. Read SELinux context with stat %C and a fallback that searches all ls fields. Do not chcon an already-existing files directory just to republish a library; keep its label and apply it to staging files. Staging files skip chcon only if their full existing label already matches, and the final label is verified before rename. Genuine failures still abort instead of silently dropping required permissions.
+- If the exact PackageManager dataDir is hidden from the su child's mount view, try that same absolute path through /proc/1/root. The source path has the same scoped fallback. No other packages/profiles are scanned. Kernel/SELinux access to init's proc root may still be denied, in which case the operation reports failure. Cleanup follows the same view choice.
+- Failures identify the actual deployment/config publication step, exit code and command output in the error dialog. A Copy action copies those details. The root-denial dialog remains unchanged and has no technical shell diagnostics. A generic failure no longer implies that root was denied.
+- Host integration exercises both requested sequences through the real ConfigManager and deployment script, writes/reads real JSON and SO files, and checks failed deployment reverts enable then succeeds after repair. Only root transport, SELinux tools and force-stop are controlled fixtures; this is not physical SukiSU validation.
+- Packaging checks APK/module versionName and versionCode, both authors, signing certificate, and SHA-256 equality of the bundled APK and standalone build.
 
 ## Deployment, logging and UI in 1.5.2
 

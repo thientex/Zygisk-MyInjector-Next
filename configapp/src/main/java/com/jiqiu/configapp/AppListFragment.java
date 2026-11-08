@@ -188,6 +188,7 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
     public void onAppToggle(AppInfo appInfo, boolean isEnabled) {
         LOADER.execute(() -> {
             ConfigManager.ApplyResult result = configManager.setAppEnabled(appInfo.getPackageName(), isEnabled);
+            String details = configManager.getLastApplyError();
             new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
                 if (result == ConfigManager.ApplyResult.FAILED) {
                     appInfo.setEnabled(!isEnabled);
@@ -197,7 +198,7 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
                     }
                 }
                 if (result == ConfigManager.ApplyResult.FAILED || result == ConfigManager.ApplyResult.STOP_FAILED)
-                    showApplyError(result);
+                    showApplyError(result, details);
             });
         });
     }
@@ -348,19 +349,28 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
                     outcome = ConfigManager.ApplyResult.FAILED;
                 }
                 final ConfigManager.ApplyResult result = outcome;
+                String details = configManager.getLastApplyError();
                 new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
                     if (result == ConfigManager.ApplyResult.FAILED || result == ConfigManager.ApplyResult.STOP_FAILED)
-                        showApplyError(result);
+                        showApplyError(result, details);
                     completion.finish(result != ConfigManager.ApplyResult.FAILED);
                 });
             });
         });
     }
 
-    private void showApplyError(ConfigManager.ApplyResult result) {
+    private void showApplyError(ConfigManager.ApplyResult result, String details) {
         if (!isAdded() || requireActivity().isFinishing()) return;
+        String message = getString(result == ConfigManager.ApplyResult.STOP_FAILED ? R.string.apply_stop_failed : R.string.apply_failed);
+        if (details != null && !details.isEmpty()) message += "\n\n" + details;
+        final String report = message;
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-            .setMessage(result == ConfigManager.ApplyResult.STOP_FAILED ? R.string.apply_stop_failed : R.string.apply_failed)
+            .setMessage(message)
+            .setNeutralButton(android.R.string.copy, (dialog, which) -> {
+                android.content.ClipboardManager clipboard = (android.content.ClipboardManager)
+                    requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("MyInjector", report));
+            })
             .setPositiveButton(android.R.string.ok, null).show();
     }
 

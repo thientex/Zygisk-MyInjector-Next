@@ -22,22 +22,41 @@ public class ConfigManager {
     
     private final Context context;
     private final Gson gson;
+    interface Commands { Shell.Result run(String... commands); }
+    private final Commands commands;
+    private volatile String lastApplyError = "";
+    public String getLastApplyError() { return lastApplyError; }
+    private void recordFailure(String step, Shell.Result result) {
+        String detail = String.join("\n", result.getErr());
+        if (detail.isEmpty()) detail = String.join("\n", result.getOut());
+        lastApplyError = step + " (exit " + result.getCode() + ")" + (detail.isEmpty() ? "" : "\n" + detail);
+        Log.e(TAG, lastApplyError);
+    }
     private static volatile ModuleConfig config;
     
     static { Shell.enableVerboseLogging = false; }
 
-    public static void initializeShell() { /* initialize the I/O queue without acquiring su */ }
 
-    public ConfigManager(Context context) {
+    private ConfigManager(Context context, Commands commands) {
         this.context = context.getApplicationContext();
         this.gson = new GsonBuilder().setPrettyPrinting().create();
-        
-        // Ensure we get root shell on creation
+        this.commands = commands;
+    }
+
+    public ConfigManager(Context context) {
+        this(context, cmd -> RootShell.cmd(cmd).exec());
         RootShell.get();
-        
         if (config == null) loadConfig();
     }
-    
+
+    // Inject only the command transport in host integration tests; all save/deploy logic stays real.
+    ConfigManager(Context context, Commands commands, ModuleConfig initial) {
+        this(context, commands);
+        config = initial;
+    }
+
+    public static void initializeShell() { /* initialize the I/O queue without acquiring su */ }
+
     public boolean isRootAvailable() {
         return RootShell.get().isRoot();
     }
@@ -50,29 +69,29 @@ public class ConfigManager {
         }
         
         // Create module directories
-        Shell.Result result1 = RootShell.cmd("mkdir -p " + MODULE_PATH).exec();
+        Shell.Result result1 = commands.run("mkdir -p " + MODULE_PATH);
         if (!result1.isSuccess()) {
             Log.e(TAG, "Failed to create module directory: " + MODULE_PATH);
         }
         
-        Shell.Result result2 = RootShell.cmd("mkdir -p " + SO_STORAGE_DIR).exec();
+        Shell.Result result2 = commands.run("mkdir -p " + SO_STORAGE_DIR);
         if (!result2.isSuccess()) {
             Log.e(TAG, "Failed to create SO storage directory: " + SO_STORAGE_DIR);
         }
         
         // Set permissions
-        RootShell.cmd("chmod 755 " + MODULE_PATH).exec();
-        RootShell.cmd("chmod 755 " + SO_STORAGE_DIR).exec();
+        commands.run("chmod 755 " + MODULE_PATH);
+        commands.run("chmod 755 " + SO_STORAGE_DIR);
         
         // Verify directories exist
-        Shell.Result verify = RootShell.cmd("ls -la " + MODULE_PATH).exec();
+        Shell.Result verify = commands.run("ls -la " + MODULE_PATH);
         if (verify.isSuccess()) {
             Log.i(TAG, "Module directory ready: " + String.join("\n", verify.getOut()));
         }
     }
     
     private void loadConfig() {
-        Shell.Result result = RootShell.cmd("cat " + CONFIG_FILE).exec();
+        Shell.Result result = commands.run("cat " + CONFIG_FILE);
         if (result.isSuccess() && !result.getOut().isEmpty()) {
             String json = String.join("\n", result.getOut());
             try {
@@ -110,16 +129,17 @@ public class ConfigManager {
             writer.close();
             
             // Copy to module directory with root
-            Shell.Result published = RootShell.cmd("cp " + quote(tempFile) + " " + quote(CONFIG_FILE + ".new")
+            Shell.Result published = commands.run("cp " + quote(tempFile) + " " + quote(CONFIG_FILE + ".new")
                 + " && chmod 644 " + quote(CONFIG_FILE + ".new")
-                + " && mv -f " + quote(CONFIG_FILE + ".new") + " " + quote(CONFIG_FILE)).exec();
-            if (!published.isSuccess()) Log.e(TAG, "Failed to publish configuration");
+                + " && mv -f " + quote(CONFIG_FILE + ".new") + " " + quote(CONFIG_FILE));
+            if (!published.isSuccess()) recordFailure("Cannot publish module config.json", published);
             
             // Clean up temp file
             new File(tempFile).delete();
             return published.isSuccess();
         } catch (Exception e) {
-            Log.e(TAG, "Failed to save config", e);
+            lastApplyError = "Cannot write configuration: " + e;
+            Log.e(TAG, lastApplyError, e);
             return false;
         }
     }
@@ -130,6 +150,7 @@ public class ConfigManager {
     }
     
     public ApplyResult setAppEnabled(String packageName, boolean enabled) {
+        lastApplyError = "";
         AppConfig appConfig = config.perAppConfig.get(packageName);
         if (appConfig == null) {
             appConfig = new AppConfig();
@@ -176,12 +197,12 @@ public class ConfigManager {
         if (!safeFileName(name)) return ApplyResult.FAILED;
         String storedPath = SO_STORAGE_DIR + "/" + name;
         String stage = storedPath + "." + java.util.UUID.randomUUID() + ".tmp";
-        Shell.Result copied = RootShell.cmd("mkdir -p " + quote(SO_STORAGE_DIR)
+        Shell.Result copied = commands.run("mkdir -p " + quote(SO_STORAGE_DIR)
             + " && cp " + quote(originalPath) + " " + quote(stage)
             + " && chmod 755 " + quote(stage)
-            + " && mv -f " + quote(stage) + " " + quote(storedPath)).exec();
+            + " && mv -f " + quote(stage) + " " + quote(storedPath));
         if (!copied.isSuccess()) {
-            RootShell.cmd("rm -f " + quote(stage)).exec();
+            commands.run("rm -f " + quote(stage));
             return ApplyResult.FAILED;
         }
         SoFile file = getAllSoFiles().stream().filter(f -> f.name.equals(name)).findFirst().orElse(null);
@@ -200,7 +221,7 @@ public class ConfigManager {
                 else if (result != ApplyResult.STOP_FAILED) result = ApplyResult.RESTARTED;
             }
         }
-        if (deleteOriginal && !originalPath.equals(storedPath)) RootShell.cmd("rm -f " + quote(originalPath)).exec();
+        if (deleteOriginal && !originalPath.equals(storedPath)) commands.run("rm -f " + quote(originalPath));
         return result;
     }
 
@@ -212,13 +233,14 @@ public class ConfigManager {
         if (!packageName.matches("[a-zA-Z0-9_]+(?:\\.[a-zA-Z0-9_]+)+")
                 || packageName.equals(context.getPackageName())) return ApplyResult.STOP_FAILED;
         // Explicitly authorized by the user: a fresh process is required for the new mapping.
-        return RootShell.cmd("am force-stop --user " + (android.os.Process.myUid() / 100000)
-            + " " + quote(packageName)).exec().isSuccess() ? ApplyResult.RESTARTED : ApplyResult.STOP_FAILED;
+        return commands.run("am force-stop --user " + (android.os.Process.myUid() / 100000)
+            + " " + quote(packageName)).isSuccess() ? ApplyResult.RESTARTED : ApplyResult.STOP_FAILED;
     }
 
     /** One commit per Save: cancellation never writes partial app configuration. */
     public ApplyResult applyAppConfiguration(String packageName, String method, List<SoFile> selected,
                                              boolean useGlobal, GadgetConfig gadget) {
+        lastApplyError = "";
         AppConfig previous = config.perAppConfig.get(packageName);
         AppConfig next = previous == null ? new AppConfig() : gson.fromJson(gson.toJson(previous), AppConfig.class);
         next.injectionMethod = method;
@@ -266,7 +288,7 @@ public class ConfigManager {
             if (stopped == ApplyResult.STOP_FAILED) result = stopped;
             else if (result != ApplyResult.STOP_FAILED) result = ApplyResult.RESTARTED;
         }
-        if (!RootShell.cmd("rm -f " + quote(soFile.storedPath)).exec().isSuccess()) return ApplyResult.FAILED;
+        if (!commands.run("rm -f " + quote(soFile.storedPath)).isSuccess()) return ApplyResult.FAILED;
         return result;
     }
 
@@ -423,7 +445,7 @@ public class ConfigManager {
         if (gadgetConfig != null) {
             // Check if gadget SO file exists in global storage
             String gadgetPath = SO_STORAGE_DIR + "/" + gadgetConfig.gadgetName;
-            Shell.Result checkResult = RootShell.cmd("test -f \"" + gadgetPath + "\" && echo 'exists'").exec();
+            Shell.Result checkResult = commands.run("test -f \"" + gadgetPath + "\" && echo 'exists'");
             
             if (checkResult.isSuccess() && !checkResult.getOut().isEmpty()) {
                 // Add gadget as a SO file
@@ -505,14 +527,15 @@ public class ConfigManager {
             // Copy to app's files directory
             String filesDir = TargetDeployment.filesDir(context, packageName);
             String gadgetConfigName = gadgetConfig.gadgetName.replace(".so", ".config.so");
-            Shell.Result copyResult = RootShell.cmd(TargetDeployment.script(tempFile, filesDir, gadgetConfigName, false)).exec();
-            if (!copyResult.isSuccess()) Log.e(TAG, "Gadget configuration deployment failed: " + String.join("\n", copyResult.getErr()));
+            Shell.Result copyResult = commands.run(TargetDeployment.script(tempFile, filesDir, gadgetConfigName, false));
+            if (!copyResult.isSuccess()) recordFailure("Cannot deploy Gadget configuration", copyResult);
 
             // Clean up temp file
             new java.io.File(tempFile).delete();
             return copyResult.isSuccess();
         } catch (Exception e) {
-            Log.e(TAG, "Failed to create gadget config file", e);
+            lastApplyError = "Cannot create Gadget config: " + e;
+            Log.e(TAG, lastApplyError, e);
             return false;
         }
     }
@@ -524,11 +547,13 @@ public class ConfigManager {
         try {
             String directory = TargetDeployment.filesDir(context, packageName);
             for (SoFile file : app.soFiles) {
-                if (file == null || file.storedPath == null || !safeFileName(file.name)) return false;
-                Shell.Result result = RootShell.cmd(TargetDeployment.script(file.storedPath, directory, file.name, true)).exec();
+                if (file == null || file.storedPath == null || !safeFileName(file.name)) {
+                    lastApplyError = "Invalid SO entry in config.json";
+                    return false;
+                }
+                Shell.Result result = commands.run(TargetDeployment.script(file.storedPath, directory, file.name, true));
                 if (!result.isSuccess()) {
-                    Log.e(TAG, "SO deployment failed: package=" + packageName + " target=" + directory
-                        + " source=" + file.storedPath + " error=" + String.join("\n", result.getErr()));
+                    recordFailure("Cannot deploy SO: " + file.name + " -> " + directory, result);
                     return false;
                 }
                 Log.i(TAG, "SO deployed: package=" + packageName + " path=" + directory + "/" + file.name);
@@ -536,15 +561,16 @@ public class ConfigManager {
             GadgetConfig gadget = getAppGadgetConfig(packageName);
             return gadget == null || deployGadgetConfigFile(packageName, gadget);
         } catch (RuntimeException error) {
-            Log.e(TAG, "Cannot deploy libraries for " + packageName, error);
+            lastApplyError = "Cannot deploy libraries for " + packageName + ": " + error;
+            Log.e(TAG, lastApplyError, error);
             return false;
         }
     }
 
     boolean publishExternalGadget(String packageName, String source, String name) {
         try {
-            Shell.Result result = RootShell.cmd(TargetDeployment.script(source,
-                TargetDeployment.filesDir(context, packageName), name, false)).exec();
+            Shell.Result result = commands.run(TargetDeployment.script(source,
+                TargetDeployment.filesDir(context, packageName), name, false));
             if (!result.isSuccess()) Log.e(TAG, "External gadget configuration failed: " + String.join("\n", result.getErr()));
             return result.isSuccess();
         } catch (RuntimeException error) {
@@ -557,7 +583,10 @@ public class ConfigManager {
         if (!safeFileName(name)) return false;
         try {
             String directory = TargetDeployment.filesDir(context, packageName);
-            return RootShell.cmd("test ! -L " + quote(directory) + " && rm -f " + quote(directory + "/" + name)).exec().isSuccess();
+            String global = "/proc/1/root" + directory;
+            return commands.run("injector_files=" + quote(directory)
+                + "; if [ ! -d \"$injector_files\" ] && [ -d " + quote(global) + " ]; then injector_files=" + quote(global) + "; fi"
+                + "; test ! -L \"$injector_files\" && rm -f \"$injector_files\"/" + quote(name)).isSuccess();
         } catch (RuntimeException error) {
             Log.w(TAG, "Cannot clean deployed file for " + packageName, error);
             return false;
@@ -603,8 +632,8 @@ public class ConfigManager {
     }
 
     private void readMaintenanceConfig() {
-        Shell.Result read = RootShell.cmd("if [ -f " + quote(CONFIG_FILE) + " ]; then cat "
-            + quote(CONFIG_FILE) + "; else printf 'null'; fi").exec();
+        Shell.Result read = commands.run("if [ -f " + quote(CONFIG_FILE) + " ]; then cat "
+            + quote(CONFIG_FILE) + "; else printf 'null'; fi");
         if (!read.isSuccess()) throw new IllegalStateException("Cannot read module configuration");
         ModuleConfig disk = gson.fromJson(String.join("\n", read.getOut()), ModuleConfig.class);
         if (disk == null) disk = new ModuleConfig();
@@ -655,8 +684,8 @@ public class ConfigManager {
                 }
                 for (String name : names) if (!removeDeployedFile(pkg, name)) success = false;
             }
-            if (!RootShell.cmd("rm -rf " + quote(SO_STORAGE_DIR)
-                + " && mkdir -p " + quote(SO_STORAGE_DIR) + " && chmod 755 " + quote(SO_STORAGE_DIR)).exec().isSuccess()) success = false;
+            if (!commands.run("rm -rf " + quote(SO_STORAGE_DIR)
+                + " && mkdir -p " + quote(SO_STORAGE_DIR) + " && chmod 755 " + quote(SO_STORAGE_DIR)).isSuccess()) success = false;
             if (!ConfigMaintenance.clearCache(context.getCacheDir())) success = false;
             AppCatalog.clear();
             return success;

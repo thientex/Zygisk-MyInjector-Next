@@ -2,8 +2,8 @@ ext {
     moduleLibraryName = "myinjector"
     magiskModuleId = "zygisk-myinjector"
     moduleName = "myinjector"
-    moduleAuthor = "jiqiu2021"
-    moduleDescription = "MyInjector private build with localized configuration app"
-    moduleVersion = "v1.5.2-private"
-    moduleVersionCode = 152
+    moduleAuthor = "jiqiu2021 & thientex"
+    moduleDescription = "MyInjector with localized configuration app"
+    moduleVersion = "1.5.0"
+    moduleVersionCode = 153
 }
