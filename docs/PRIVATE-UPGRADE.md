@@ -1,6 +1,20 @@
-# Private upgrade 1.5.1
+# Private upgrade 1.5.2
 
 This working tree is based on jiqiu2022/Zygisk-MyInjector. The original MIT license and attribution are retained. The maintained source is published at https://github.com/thientex/Zygisk-MyInjector-Next.
+
+## Deployment, logging and UI in 1.5.2
+
+- Save is on the left, Cancel on the right, with the short localized Save label. Save/toggle no longer produce toasts. Failures use a modal message; failed saves retain selections and failed toggles revert.
+- Settings ends with a clickable © thientex credit linking to https://github.com/thientex. Original MIT, Fira Sans and Lucide licenses/credits remain intact.
+- All module logging uses MyInjector, including the custom linker and service. Runtime messages are English. Selecting a target is explicitly logged as preparation, not a false report that dlopen already succeeded. Missing/unreadable libraries report the actual path, errno and process UID.
+- The current native loader reads `<app_data_dir>/files/<name>` using the directory provided during Zygisk specialization. With this design, deployment into that app-private files directory is required; `/data/user/0` is only one possible location and `/data/data` is normally its user-0 alias.
+- The config app now resolves ApplicationInfo.dataDir with PackageManager for its current Android user, also supporting secondary users and adopted-storage paths. SO, Gadget configuration, cleanup and reset use the same resolver. It does not guess paths for other users, invent a missing app data root, or fall back to loading arbitrary paths under /data/local/tmp.
+- A single checked root script obtains the data directory's UID:GID and full SELinux label (including MLS categories), refuses a symlink files directory, creates missing files directories without widening existing permissions, and copies to a unique staging inode. It checks byte equality, sets owner/label/read-only mode (0500 SO, 0400 Gadget config), and atomically renames. Failures abort and clean staging. No permissive SELinux or generic `app_data_file:s0` category stripping is used.
+- Re-saving an enabled target republishes its libraries and restarts that target even if settings are unchanged, repairing files lost after clearing target data. Disabled no-change saves remain a no-op. Multi-file updates are not a rollback transaction; a failed deployment can require retry.
+- The external Gadget config path uses the same publication routine. Tests exercise the production shell script with real Linux copy/rename/permissions, while Android SELinux commands are controlled fixtures. These tests cannot establish device policy compatibility.
+- Missing/locked user storage, denied root app profiles or namespaces, ROM SELinux policy, isolated processes, SO ABI/dependencies and root/Zygisk implementation support can still prevent loading. Work-profile management must run from that profile. Only the supplied ARM64 build is packaged; 32-bit targets require matching module/SO ABI.
+- The module is linked with 16 KiB LOAD alignment and the custom linker queries the runtime page size instead of assuming 4096. Host alignment arithmetic is tested with controlled 4/16 KiB sysconf values; actual custom-linker execution on 16 KiB Android remains untested.
+- Android 8+ compatibility uses long-standing PackageManager and Android shell facilities. No physical Android 8–latest device matrix or SukiSU device is connected, so universal compatibility is not claimed.
 
 ## Save dialog and wording fixes in 1.5.1
 

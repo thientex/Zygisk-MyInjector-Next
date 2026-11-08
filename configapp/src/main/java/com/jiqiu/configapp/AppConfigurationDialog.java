@@ -38,10 +38,10 @@ final class AppConfigurationDialog {
         cancel.setText(R.string.text_cancel);
         MaterialButton save = new MaterialButton(dialog.getContext());
         save.setId(R.id.app_config_save);
-        save.setText(R.string.apply_and_save);
+        save.setText(R.string.text_save);
         cancel.setMaxLines(2); save.setMaxLines(2);
+        footer.addView(save, new LinearLayout.LayoutParams(0, -2, 1));
         footer.addView(cancel, new LinearLayout.LayoutParams(0, -2, 1));
-        footer.addView(save, new LinearLayout.LayoutParams(0, -2, 2));
         shell.addView(footer, new LinearLayout.LayoutParams(-1, -2));
         cancel.setOnClickListener(v -> dialog.dismiss());
         save.setOnClickListener(v -> {

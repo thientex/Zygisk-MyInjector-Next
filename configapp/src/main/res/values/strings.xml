@@ -147,4 +147,5 @@
 <string name="reset_done">"All data deleted."</string>
 <string name="maintenance_failed">"Operation did not complete. Check root access and try again; some changes may already be applied."</string>
 <string name="refresh_failed">Unable to refresh the app list. Please try again.</string>
+    <string name="author_credit">© thientex · GitHub</string>
 </resources>

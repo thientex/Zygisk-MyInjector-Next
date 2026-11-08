@@ -18,7 +18,7 @@ extern "C" void riru_hide(const char *name);
 void load_so_file_standard(const char *game_data_dir, const Config::SoFile &soFile) {
     // Use original filename
     char so_path[512];
-    if (soFile.name.empty() || soFile.name.find('/') != std::string::npos) {
+    if (soFile.name.empty() || soFile.name.find('/') != std::string::npos || soFile.name == "." || soFile.name == "..") {
         LOGE("Invalid SO filename");
         return;
     }
@@ -29,8 +29,8 @@ void load_so_file_standard(const char *game_data_dir, const Config::SoFile &soFi
     }
     
     // Check if file exists
-    if (access(so_path, F_OK) != 0) {
-        LOGE("SO file not found: %s", so_path);
+    if (access(so_path, R_OK) != 0) {
+        LOGE("Cannot read deployed library: path=%s errno=%d error=%s; save configuration again to redeploy", so_path, errno, strerror(errno));
         return;
     }
     
@@ -46,7 +46,7 @@ void load_so_file_standard(const char *game_data_dir, const Config::SoFile &soFi
 void load_so_file_riru(const char *game_data_dir, const Config::SoFile &soFile) {
     // Use original filename
     char so_path[512];
-    if (soFile.name.empty() || soFile.name.find('/') != std::string::npos) {
+    if (soFile.name.empty() || soFile.name.find('/') != std::string::npos || soFile.name == "." || soFile.name == "..") {
         LOGE("Invalid SO filename");
         return;
     }
@@ -57,8 +57,8 @@ void load_so_file_riru(const char *game_data_dir, const Config::SoFile &soFile) 
     }
     
     // Check if file exists
-    if (access(so_path, F_OK) != 0) {
-        LOGE("SO file not found: %s", so_path);
+    if (access(so_path, R_OK) != 0) {
+        LOGE("Cannot read deployed library: path=%s errno=%d error=%s; save configuration again to redeploy", so_path, errno, strerror(errno));
         return;
     }
     
@@ -81,7 +81,7 @@ void load_so_file_riru(const char *game_data_dir, const Config::SoFile &soFile) 
 void load_so_file_custom_linker(const char *game_data_dir, const Config::SoFile &soFile, JavaVM *vm) {
     // Use original filename
     char so_path[512];
-    if (soFile.name.empty() || soFile.name.find('/') != std::string::npos) {
+    if (soFile.name.empty() || soFile.name.find('/') != std::string::npos || soFile.name == "." || soFile.name == "..") {
         LOGE("Invalid SO filename");
         return;
     }
@@ -92,8 +92,8 @@ void load_so_file_custom_linker(const char *game_data_dir, const Config::SoFile 
     }
     
     // Check if file exists
-    if (access(so_path, F_OK) != 0) {
-        LOGE("SO file not found: %s", so_path);
+    if (access(so_path, R_OK) != 0) {
+        LOGE("Cannot read deployed library: path=%s errno=%d error=%s; save configuration again to redeploy", so_path, errno, strerror(errno));
         return;
     }
     
@@ -111,7 +111,7 @@ void load_so_file_custom_linker(const char *game_data_dir, const Config::SoFile 
 }
 
 void hack_thread_func(const char *game_data_dir, const char *package_name, JavaVM *vm) {
-    LOGI("Hack thread started for package: %s", package_name);
+    LOGI("Library worker started: process=%s uid=%d data_dir=%s", package_name, getuid(), game_data_dir);
     
     const int delay = Config::getInjectionDelay();
     if (delay > 0) std::this_thread::sleep_for(std::chrono::seconds(delay));

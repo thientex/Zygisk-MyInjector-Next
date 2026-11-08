@@ -52,6 +52,15 @@ public class SettingsFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         
+        view.findViewById(R.id.author_credit).setOnClickListener(v -> {
+            android.content.Intent link = new android.content.Intent(android.content.Intent.ACTION_VIEW,
+                android.net.Uri.parse("https://github.com/thientex"));
+            try { startActivity(link); }
+            catch (android.content.ActivityNotFoundException unavailable) {
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                    .setMessage("https://github.com/thientex").setPositiveButton(android.R.string.ok, null).show();
+            }
+        });
         initViews(view);
         initSharedPreferences();
         loadSettings();

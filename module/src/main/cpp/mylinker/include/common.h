@@ -19,7 +19,7 @@
 #include <unordered_map>
 #include <memory>
 
-#define LOG_TAG "CustomLinker"
+#define LOG_TAG "MyInjector"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
@@ -30,7 +30,15 @@
 #define ELFW(what) ELF32_ ## what
 #endif
 
-#define PAGE_SIZE 4096
+// Android 15+ ARM64 devices may use 16 KiB pages. Never assume 4096 for mmap/mprotect.
+inline size_t injector_page_size() {
+    static const long detected = sysconf(_SC_PAGESIZE);
+    return detected > 0 ? static_cast<size_t>(detected) : 4096;
+}
+#ifdef PAGE_SIZE
+#undef PAGE_SIZE
+#endif
+#define PAGE_SIZE (injector_page_size())
 #define PAGE_MASK (~(PAGE_SIZE - 1))
 #define PAGE_START(addr) ((addr) & PAGE_MASK)
 #define PAGE_END(addr) PAGE_START((addr) + PAGE_SIZE - 1)

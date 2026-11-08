@@ -2,7 +2,7 @@
 
 Bản phát triển tiếp từ [jiqiu2022/Zygisk-MyInjector](https://github.com/jiqiu2022/Zygisk-MyInjector), giữ nguyên giấy phép MIT và ghi nhận tác giả/thành phần gốc.
 
-Mã nguồn hiện tại tương ứng bản **1.5.1-private** đã build trong quá trình phát triển. Hậu tố `private` là tên phiên bản cũ; repository này được công khai theo lựa chọn của chủ repo.
+Mã nguồn hiện tại tương ứng bản **1.5.2-private** đã build trong quá trình phát triển. Hậu tố `private` là tên phiên bản cũ; repository này được công khai theo lựa chọn của chủ repo.
 
 Các thay đổi gồm Anh/Việt trong cài đặt, font Fira Sans, icon Lucide, giao diện sáng/tối, cache danh sách/icon, sắp xếp app bật trước, áp dụng SO kèm đóng tiến trình đích, và hộp thoại thiếu root chỉ có nút đóng-kết thúc tiến trình của MyInjector.
 

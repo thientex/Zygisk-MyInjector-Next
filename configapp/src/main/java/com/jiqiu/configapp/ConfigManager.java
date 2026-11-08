@@ -15,7 +15,7 @@ import java.util.Map;
 
 public class ConfigManager {
     static final java.util.concurrent.ExecutorService IO = java.util.concurrent.Executors.newSingleThreadExecutor();
-    private static final String TAG = "ConfigManager";
+    private static final String TAG = "MyInjector";
     public static final String MODULE_PATH = "/data/adb/modules/zygisk-myinjector";
     public static final String CONFIG_FILE = MODULE_PATH + "/config.json";
     public static final String SO_STORAGE_DIR = MODULE_PATH + "/so_files";
@@ -231,7 +231,8 @@ public class ConfigManager {
             if (gadgetFile == null) return ApplyResult.FAILED;
             if (!next.soFiles.contains(gadgetFile)) next.soFiles.add(gadgetFile);
         }
-        if (previous != null && gson.toJson(previous).equals(gson.toJson(next))) return ApplyResult.SAVED;
+        // Re-saving an enabled app must repair missing/stale deployed files (e.g. after clearing target data).
+        if (!next.enabled && previous != null && gson.toJson(previous).equals(gson.toJson(next))) return ApplyResult.SAVED;
         config.perAppConfig.put(packageName, next);
         ApplySequence.Outcome applied = ApplySequence.run(next.enabled,
             () -> deploySoFilesToApp(packageName), this::saveConfig,
@@ -244,7 +245,7 @@ public class ConfigManager {
         // Remove only files that this configuration used to own, after publication.
         if (previous != null) for (SoFile old : previous.soFiles) {
             if (safeFileName(old.name) && next.soFiles.stream().noneMatch(f -> old.name.equals(f.name)))
-                RootShell.cmd("rm -f " + quote("/data/data/" + packageName + "/files/" + old.name)).exec();
+                removeDeployedFile(packageName, old.name);
         }
         return ApplyResult.valueOf(applied.name());
     }
@@ -260,7 +261,7 @@ public class ConfigManager {
         if (!saveConfig()) return ApplyResult.FAILED;
         ApplyResult result = ApplyResult.SAVED;
         for (String pkg : affected) {
-            RootShell.cmd("rm -f " + quote("/data/data/" + pkg + "/files/" + soFile.name)).exec();
+            removeDeployedFile(pkg, soFile.name);
             ApplyResult stopped = stopTarget(pkg);
             if (stopped == ApplyResult.STOP_FAILED) result = stopped;
             else if (result != ApplyResult.STOP_FAILED) result = ApplyResult.RESTARTED;
@@ -464,6 +465,7 @@ public class ConfigManager {
     
     private boolean deployGadgetConfigFile(String packageName, GadgetConfig gadgetConfig) {
         try {
+            if (!safeFileName(gadgetConfig.gadgetName)) return false;
             // Create gadget config JSON
             String configJson;
             if ("script".equals(gadgetConfig.mode)) {
@@ -501,22 +503,11 @@ public class ConfigManager {
             writer.close();
             
             // Copy to app's files directory
-            String filesDir = "/data/data/" + packageName + "/files";
+            String filesDir = TargetDeployment.filesDir(context, packageName);
             String gadgetConfigName = gadgetConfig.gadgetName.replace(".so", ".config.so");
-            String targetPath = filesDir + "/" + gadgetConfigName;
-            
-            String staged = targetPath + ".new";
-            Shell.Result copyResult = RootShell.cmd("cp " + quote(tempFile) + " " + quote(staged)
-                + " && chmod 644 " + quote(staged)
-                + " && mv -f " + quote(staged) + " " + quote(targetPath)).exec();
-            if (copyResult.isSuccess()) {
-                // Set permissions
-                RootShell.cmd("chmod 644 " + targetPath).exec();
-                Log.i(TAG, "Deployed gadget config to: " + targetPath);
-            } else {
-                Log.e(TAG, "Failed to deploy gadget config: " + String.join("\n", copyResult.getErr()));
-            }
-            
+            Shell.Result copyResult = RootShell.cmd(TargetDeployment.script(tempFile, filesDir, gadgetConfigName, false)).exec();
+            if (!copyResult.isSuccess()) Log.e(TAG, "Gadget configuration deployment failed: " + String.join("\n", copyResult.getErr()));
+
             // Clean up temp file
             new java.io.File(tempFile).delete();
             return copyResult.isSuccess();
@@ -526,186 +517,61 @@ public class ConfigManager {
         }
     }
     
-    // Copy SO files directly to app's data directory
+    // Android's PackageManager supplies the path for this user/storage volume; never guess user 0.
     private boolean deploySoFilesToApp(String packageName) {
-        AppConfig appConfig = config.perAppConfig.get(packageName);
-        if (appConfig == null) return false;
-        if (appConfig.soFiles.isEmpty()) return true;
-        
-        // First check if we have root access
-        if (!RootShell.get().isRoot()) {
-            Log.e(TAG, "No root access available!");
-            return false;
-        }
-        
-        // Create files directory in app's data dir
-        String filesDir = "/data/data/" + packageName + "/files";
-        
-        Log.i(TAG, "Deploying SO files to: " + filesDir);
-        
-        // Create directory without su -c for better compatibility
-        Shell.Result mkdirResult = RootShell.cmd("mkdir -p " + filesDir).exec();
-        if (!mkdirResult.isSuccess()) {
-            Log.e(TAG, "Failed to create directory: " + filesDir);
-            Log.e(TAG, "Error: " + String.join("\n", mkdirResult.getErr()));
-            return false;
-        }
-        
-        // Set proper permissions and ownership for the files directory
-        RootShell.cmd("chmod 771 " + filesDir).exec();
-        
-        // Get UID and GID for the package
-        Shell.Result uidResult = RootShell.cmd("stat -c %u /data/data/" + packageName).exec();
-        String uid = "";
-        if (uidResult.isSuccess() && !uidResult.getOut().isEmpty()) {
-            uid = uidResult.getOut().get(0).trim();
-            Log.i(TAG, "Package UID: " + uid);
-            
-            // Set ownership of files directory to match app
-            Shell.Result chownDirResult = RootShell.cmd("chown " + uid + ":" + uid + " \"" + filesDir + "\"").exec();
-            if (!chownDirResult.isSuccess()) {
-                Log.e(TAG, "Failed to set directory ownership: " + String.join("\n", chownDirResult.getErr()));
-            }
-            
-            // Set SELinux context for the directory
-            RootShell.cmd("restorecon -F " + quote(filesDir)).exec();
-        } else {
-            Log.e(TAG, "Failed to get package UID");
-        }
-        
-        Shell.Result labelResult = RootShell.cmd("ls -Zd " + quote(filesDir)).exec();
-        String label = labelResult.isSuccess() && !labelResult.getOut().isEmpty()
-            ? labelResult.getOut().get(0).trim().split("\\s+")[0] : "";
-        if (!label.matches("[a-zA-Z0-9_:,]+")) {
-            Log.e(TAG, "Cannot determine target SELinux label; deployment cancelled");
-            return false;
-        }
-        // Copy each SO file configured for this app
-        for (SoFile soFile : appConfig.soFiles) {
-            // Use original filename
-            if (soFile.name == null || soFile.name.isEmpty() || soFile.name.contains("/")
-                    || soFile.name.equals(".") || soFile.name.equals("..")) return false;
-            String destPath = filesDir + "/" + soFile.name;
-            
-            // Check if source file exists
-            Shell.Result checkResult = RootShell.cmd("test -f \"" + soFile.storedPath + "\" && echo 'exists'").exec();
-            if (!checkResult.isSuccess() || checkResult.getOut().isEmpty()) {
-                Log.e(TAG, "Source SO file not found: " + soFile.storedPath);
-                // Log more details about the missing file
-                Shell.Result lsResult = RootShell.cmd("ls -la \"" + SO_STORAGE_DIR + "\"").exec();
-                Log.e(TAG, "Contents of SO storage dir: " + String.join("\n", lsResult.getOut()));
-                return false;
-            }
-            
-            Log.i(TAG, "Copying: " + soFile.storedPath + " to " + destPath);
-            
-            // First, ensure the destination directory exists and has proper permissions
-            RootShell.cmd("mkdir -p \"" + filesDir + "\"").exec();
-            RootShell.cmd("chmod 755 \"" + filesDir + "\"").exec();
-            
-            // Publish a new inode atomically. Truncating a mapped library can cause SIGBUS
-            // in an already-running target process, even after dlopen succeeded.
-            String stagedPath = destPath + "." + java.util.UUID.randomUUID() + ".tmp";
-            String owner = uid.matches("[0-9]+") ? " && chown " + uid + ":" + uid + " " + quote(stagedPath) : "";
-            Shell.Result result = RootShell.cmd("cp " + quote(soFile.storedPath) + " " + quote(stagedPath)
-                + " && chmod 755 " + quote(stagedPath) + owner
-                + " && chcon " + quote(label) + " " + quote(stagedPath)
-                + " && mv -f " + quote(stagedPath) + " " + quote(destPath)).exec();
-            if (!result.isSuccess()) {
-                RootShell.cmd("rm -f " + quote(stagedPath)).exec();
-                Log.e(TAG, "Atomic SO deployment failed: " + String.join("\n", result.getErr()));
-                return false;
-            }
-
-            // Verify the file was copied with correct permissions
-            Shell.Result verifyResult = RootShell.cmd("ls -laZ \"" + destPath + "\" 2>/dev/null").exec();
-            if (verifyResult.isSuccess() && !verifyResult.getOut().isEmpty()) {
-                Log.i(TAG, "Successfully deployed: " + String.join(" ", verifyResult.getOut()));
-            } else {
-                // Fallback verification without SELinux context
-                verifyResult = RootShell.cmd("ls -la \"" + destPath + "\" 2>/dev/null").exec();
-                if (verifyResult.isSuccess() && !verifyResult.getOut().isEmpty()) {
-                    Log.i(TAG, "Successfully deployed: " + String.join(" ", verifyResult.getOut()));
-                } else {
-                    Log.e(TAG, "Failed to verify SO file copy: " + destPath);
+        AppConfig app = config.perAppConfig.get(packageName);
+        if (app == null) return false;
+        try {
+            String directory = TargetDeployment.filesDir(context, packageName);
+            for (SoFile file : app.soFiles) {
+                if (file == null || file.storedPath == null || !safeFileName(file.name)) return false;
+                Shell.Result result = RootShell.cmd(TargetDeployment.script(file.storedPath, directory, file.name, true)).exec();
+                if (!result.isSuccess()) {
+                    Log.e(TAG, "SO deployment failed: package=" + packageName + " target=" + directory
+                        + " source=" + file.storedPath + " error=" + String.join("\n", result.getErr()));
+                    return false;
                 }
+                Log.i(TAG, "SO deployed: package=" + packageName + " path=" + directory + "/" + file.name);
             }
+            GadgetConfig gadget = getAppGadgetConfig(packageName);
+            return gadget == null || deployGadgetConfigFile(packageName, gadget);
+        } catch (RuntimeException error) {
+            Log.e(TAG, "Cannot deploy libraries for " + packageName, error);
+            return false;
         }
-        
-        Log.i(TAG, "Deployment complete for: " + packageName);
-        
-        // Deploy gadget config if configured
-        ConfigManager.GadgetConfig gadgetToUse = getAppGadgetConfig(packageName);
-        if (gadgetToUse != null) {
-            if (!deployGadgetConfigFile(packageName, gadgetToUse)) return false;
-        }
-        return true;
     }
 
-    // Clean up deployed SO files when app is disabled
+    boolean publishExternalGadget(String packageName, String source, String name) {
+        try {
+            Shell.Result result = RootShell.cmd(TargetDeployment.script(source,
+                TargetDeployment.filesDir(context, packageName), name, false)).exec();
+            if (!result.isSuccess()) Log.e(TAG, "External gadget configuration failed: " + String.join("\n", result.getErr()));
+            return result.isSuccess();
+        } catch (RuntimeException error) {
+            Log.e(TAG, "Cannot deploy gadget for " + packageName, error);
+            return false;
+        }
+    }
+
+    private boolean removeDeployedFile(String packageName, String name) {
+        if (!safeFileName(name)) return false;
+        try {
+            String directory = TargetDeployment.filesDir(context, packageName);
+            return RootShell.cmd("test ! -L " + quote(directory) + " && rm -f " + quote(directory + "/" + name)).exec().isSuccess();
+        } catch (RuntimeException error) {
+            Log.w(TAG, "Cannot clean deployed file for " + packageName, error);
+            return false;
+        }
+    }
+
     private void cleanupAppSoFiles(String packageName) {
-        AppConfig appConfig = config.perAppConfig.get(packageName);
-        if (appConfig == null || appConfig.soFiles.isEmpty()) {
-            Log.w(TAG, "No SO files to clean up for: " + packageName);
-            return;
-        }
-        
-        // First check if we have root access
-        if (!RootShell.get().isRoot()) {
-            Log.e(TAG, "No root access available!");
-            return;
-        }
-        
-        String filesDir = "/data/data/" + packageName + "/files";
-        
-        // Only delete the SO files we deployed, not the entire directory
-        for (SoFile soFile : appConfig.soFiles) {
-            // Use original filename
-            String filePath = filesDir + "/" + soFile.name;
-            
-            Log.i(TAG, "Cleaning up: " + filePath);
-            
-            // Check if file exists before trying to delete
-            Shell.Result checkResult = RootShell.cmd("test -f \"" + filePath + "\" && echo 'exists'").exec();
-            if (checkResult.isSuccess() && !checkResult.getOut().isEmpty()) {
-                // Try to remove the file
-                Shell.Result result = RootShell.cmd("rm -f \"" + filePath + "\"").exec();
-                
-                // Verify deletion
-                Shell.Result verifyResult = RootShell.cmd("test -f \"" + filePath + "\" && echo 'still_exists'").exec();
-                if (!verifyResult.isSuccess() || verifyResult.getOut().isEmpty()) {
-                    Log.i(TAG, "Successfully deleted SO file: " + filePath);
-                } else {
-                    Log.e(TAG, "Failed to delete SO file: " + filePath);
-                    // Try with su -c
-                    RootShell.cmd("su -c 'rm -f \"" + filePath + "\"'").exec();
-                }
-            } else {
-                Log.w(TAG, "SO file not found for cleanup: " + filePath);
-            }
-        }
-        
-        // Clean up gadget config file if exists
-        ConfigManager.GadgetConfig gadgetToUse = getAppGadgetConfig(packageName);
-        if (gadgetToUse != null) {
-            String gadgetConfigName = gadgetToUse.gadgetName.replace(".so", ".config.so");
-            String configPath = filesDir + "/" + gadgetConfigName;
-            
-            Shell.Result checkConfigResult = RootShell.cmd("test -f \"" + configPath + "\" && echo 'exists'").exec();
-            if (checkConfigResult.isSuccess() && !checkConfigResult.getOut().isEmpty()) {
-                Shell.Result deleteResult = RootShell.cmd("rm -f \"" + configPath + "\"").exec();
-                if (deleteResult.isSuccess()) {
-                    Log.i(TAG, "Deleted gadget config: " + configPath);
-                } else {
-                    // Try with su -c
-                    RootShell.cmd("su -c 'rm -f \"" + configPath + "\"'").exec();
-                }
-            }
-        }
-        
-        Log.i(TAG, "Cleanup complete for: " + packageName);
+        AppConfig app = config.perAppConfig.get(packageName);
+        if (app == null) return;
+        for (SoFile file : app.soFiles) if (file != null) removeDeployedFile(packageName, file.name);
+        GadgetConfig gadget = getAppGadgetConfig(packageName);
+        if (gadget != null) removeDeployedFile(packageName, gadget.gadgetName.replace(".so", ".config.so"));
     }
-    
+
     // Deploy SO files for all enabled apps
     public void deployAllSoFiles() {
         for (Map.Entry<String, AppConfig> entry : config.perAppConfig.entrySet()) {
@@ -787,7 +653,7 @@ public class ConfigManager {
                     names.add(gadget.gadgetName);
                     names.add(gadget.gadgetName.replace(".so", ".config.so"));
                 }
-                for (String name : names) if (!RootShell.cmd("rm -f " + quote("/data/data/" + pkg + "/files/" + name)).exec().isSuccess()) success = false;
+                for (String name : names) if (!removeDeployedFile(pkg, name)) success = false;
             }
             if (!RootShell.cmd("rm -rf " + quote(SO_STORAGE_DIR)
                 + " && mkdir -p " + quote(SO_STORAGE_DIR) + " && chmod 755 " + quote(SO_STORAGE_DIR)).exec().isSuccess()) success = false;

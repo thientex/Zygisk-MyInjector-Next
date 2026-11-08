@@ -91,34 +91,10 @@ public class ConfigApplyReceiver extends BroadcastReceiver {
                 if (tmpGadgetConfigPath != null && !tmpGadgetConfigPath.isEmpty()) {
                     Shell.Result checkResult = RootShell.cmd("test -f \"" + tmpGadgetConfigPath + "\" && echo 'exists'").exec();
                     if (checkResult.isSuccess() && !checkResult.getOut().isEmpty()) {
-                        String filesDir = "/data/data/" + packageName + "/files";
-                        
-                        // 从路径中提取文件名
-                        String gadgetConfigFileName = tmpGadgetConfigPath.substring(tmpGadgetConfigPath.lastIndexOf('/') + 1);
-                        String targetPath = filesDir + "/" + gadgetConfigFileName;
-                        
-                        Log.i(TAG, "Copying gadget config: " + tmpGadgetConfigPath + " -> " + targetPath);
-                        
-                        // 创建目录
-                        RootShell.cmd("mkdir -p \"" + filesDir + "\"").exec();
-                        
-                        Shell.Result copyResult = RootShell.cmd(
-                            "cp \"" + tmpGadgetConfigPath + "\" \"" + targetPath + "\"",
-                            "chmod 644 \"" + targetPath + "\""
-                        ).exec();
-                        
-                        if (copyResult.isSuccess()) {
-                            Log.i(TAG, "Gadget config copied successfully");
-                            
-                            // 设置正确的所有权
-                            Shell.Result uidResult = RootShell.cmd("stat -c %u /data/data/" + packageName).exec();
-                            if (uidResult.isSuccess() && !uidResult.getOut().isEmpty()) {
-                                String uid = uidResult.getOut().get(0).trim();
-                                RootShell.cmd("chown " + uid + ":" + uid + " \"" + targetPath + "\"").exec();
-                                RootShell.cmd("chcon u:object_r:app_data_file:s0 \"" + targetPath + "\"").exec();
-                            }
-                        } else {
-                            Log.e(TAG, "Failed to copy gadget config: " + String.join("\n", copyResult.getErr()));
+                        String name = new java.io.File(tmpGadgetConfigPath).getName();
+                        if (!configManager.publishExternalGadget(packageName, tmpGadgetConfigPath, name)) {
+                            Log.e(TAG, "Gadget configuration deployment failed; aborting apply");
+                            return;
                         }
                     } else {
                         Log.w(TAG, "Gadget config file not found at: " + tmpGadgetConfigPath);

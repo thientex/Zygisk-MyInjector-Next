@@ -186,7 +186,6 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
 
     @Override
     public void onAppToggle(AppInfo appInfo, boolean isEnabled) {
-        android.content.Context context = requireContext().getApplicationContext();
         LOADER.execute(() -> {
             ConfigManager.ApplyResult result = configManager.setAppEnabled(appInfo.getPackageName(), isEnabled);
             new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
@@ -197,10 +196,8 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
                         filterApps(searchEditText.getText().toString());
                     }
                 }
-                int message = result == ConfigManager.ApplyResult.FAILED ? R.string.apply_failed
-                    : result == ConfigManager.ApplyResult.STOP_FAILED ? R.string.apply_stop_failed
-                    : result == ConfigManager.ApplyResult.RESTARTED ? R.string.apply_done : R.string.apply_saved;
-                android.widget.Toast.makeText(context, Localized.text(message), android.widget.Toast.LENGTH_LONG).show();
+                if (result == ConfigManager.ApplyResult.FAILED || result == ConfigManager.ApplyResult.STOP_FAILED)
+                    showApplyError(result);
             });
         });
     }
@@ -342,7 +339,6 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
                 ? new ArrayList<>() : ((SoSelectionAdapter) soListRecyclerView.getAdapter()).getSelectedSoFiles();
             boolean global = radioUseGlobalGadget.isChecked();
             ConfigManager.GadgetConfig gadget = radioUseCustomGadget.isChecked() ? stagedGadget[0] : null;
-            android.content.Context appContext = requireContext().getApplicationContext();
             LOADER.execute(() -> {
                 ConfigManager.ApplyResult outcome;
                 try {
@@ -353,14 +349,19 @@ public class AppListFragment extends Fragment implements AppListAdapter.OnAppTog
                 }
                 final ConfigManager.ApplyResult result = outcome;
                 new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
-                    int message = result == ConfigManager.ApplyResult.RESTARTED ? R.string.apply_done
-                        : result == ConfigManager.ApplyResult.FAILED ? R.string.apply_failed
-                        : result == ConfigManager.ApplyResult.STOP_FAILED ? R.string.apply_stop_failed : R.string.apply_saved;
-                    android.widget.Toast.makeText(appContext, Localized.text(message), android.widget.Toast.LENGTH_LONG).show();
+                    if (result == ConfigManager.ApplyResult.FAILED || result == ConfigManager.ApplyResult.STOP_FAILED)
+                        showApplyError(result);
                     completion.finish(result != ConfigManager.ApplyResult.FAILED);
                 });
             });
         });
+    }
+
+    private void showApplyError(ConfigManager.ApplyResult result) {
+        if (!isAdded() || requireActivity().isFinishing()) return;
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setMessage(result == ConfigManager.ApplyResult.STOP_FAILED ? R.string.apply_stop_failed : R.string.apply_failed)
+            .setPositiveButton(android.R.string.ok, null).show();
     }
 
     // Inner class for SO selection adapter

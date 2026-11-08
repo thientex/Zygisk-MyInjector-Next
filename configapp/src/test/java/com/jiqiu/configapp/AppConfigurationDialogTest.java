@@ -58,6 +58,9 @@ public class AppConfigurationDialogTest {
             decor.layout(0, 0, decor.getMeasuredWidth(), decor.getMeasuredHeight());
             View save = dialog.findViewById(R.id.app_config_save);
             assertTrue(save.isShown());
+            assertEquals(host.getString(R.string.text_save), ((android.widget.TextView) save).getText().toString());
+            View cancel = dialog.findViewById(R.id.app_config_cancel);
+            assertTrue(save.getLeft() < cancel.getLeft());
             int[] buttonPos = new int[2], rootPos = new int[2];
             save.getLocationOnScreen(buttonPos); decor.getLocationOnScreen(rootPos);
             assertTrue(save.getHeight() > 0);

@@ -147,4 +147,5 @@
 <string name="reset_done">"Đã xóa toàn bộ dữ liệu."</string>
 <string name="maintenance_failed">"Thao tác chưa hoàn tất. Hãy kiểm tra quyền root và thử lại; một phần thay đổi có thể đã được áp dụng."</string>
 <string name="refresh_failed">Không làm mới được danh sách ứng dụng. Hãy thử lại.</string>
+    <string name="author_credit">© thientex · GitHub</string>
 </resources>

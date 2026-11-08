@@ -40,7 +40,7 @@ public:
             if (app_data_dir) env->ReleaseStringUTFChars(args->app_data_dir, app_data_dir);
             return;
         }
-        LOGI("preAppSpecialize %s %s %d", package_name, app_data_dir, args->runtime_flags);
+        LOGD("Preparing process=%s data_dir=%s runtime_flags=%d", package_name, app_data_dir, args->runtime_flags);
 
         preSpecialize(package_name, app_data_dir);
         env->ReleaseStringUTFChars(args->nice_name, package_name);
@@ -84,7 +84,7 @@ private:
         
         // Check if this app is enabled for injection
         if (Config::isAppEnabled(package_name)) {
-            LOGI("成功注入目标进程: %s", package_name);
+            LOGI("Target selected: process=%s data_dir=%s; library loading has not started", package_name, app_data_dir);
             enable_hack = true;
             _data_dir = new char[strlen(app_data_dir) + 1];
             strcpy(_data_dir, app_data_dir);

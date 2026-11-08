@@ -147,4 +147,5 @@
 <string name="reset_done">"已删除全部数据。"</string>
 <string name="maintenance_failed">"操作未完成，请检查 root 权限后重试；部分更改可能已生效。"</string>
 <string name="refresh_failed">无法刷新应用列表，请重试。</string>
+    <string name="author_credit">© thientex · GitHub</string>
 </resources>

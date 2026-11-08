@@ -2,7 +2,7 @@
 MODDIR=${0%/*}
 export PATH=/system/bin:/system/xbin:$PATH
 LOG=/data/local/tmp/myinjector_install.log
-log() { echo "[MyInjector] $(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG"; }
+log() { echo "[MyInjector] $(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG"; /system/bin/log -t MyInjector -p i "$*"; }
 
 # Bound startup waits; a failed package manager must not leave an endless worker.
 ready=0
